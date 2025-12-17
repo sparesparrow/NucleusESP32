@@ -25,6 +25,22 @@ import os
 import sys
 import argparse
 from pathlib import Path
+from typing import Optional, List, Any, Dict
+from dataclasses import dataclass
+
+
+@dataclass
+class TestSuiteResult:
+    """Result of a test suite execution."""
+    suite_name: str
+    passed: int
+    failed: int
+    skipped: int
+    errors: int
+    duration: float
+    return_code: int
+    output: str
+    junit_file: Optional[str] = None
 
 
 class NucleusTestRunner:

@@ -256,7 +256,7 @@ class Bootstrapper:
         print("\n🔗 Setting up development tools and pre-commit hooks...")
 
         # Determine which Python to use for tools
-        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(self.sparetools_python or sys.executable)
+        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(sys.executable)
         if self.is_windows and self.venv_dir.exists():
             python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
 
@@ -403,7 +403,7 @@ class Bootstrapper:
         total_checks = 0
 
         # Determine which Python to use for checks
-        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(self.sparetools_python or sys.executable)
+        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(sys.executable)
         if self.is_windows and self.venv_dir.exists():
             python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
 
@@ -524,7 +524,7 @@ class Bootstrapper:
 
             # Phase 3: Development tools setup
             print("\n📋 Phase 3: Development Tools")
-            if not self.setup_esp32_tools():
+            if not self.setup_platformio():
                 return 1
 
             if not self.setup_precommit_hooks():
