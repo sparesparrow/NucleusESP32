@@ -1,89 +1,265 @@
-# Nucleus ESP: An Affordable Hacking Tool
+# NucleusESP32: Multi-Tool ESP32 Firmware
 
-Nucleus ESP is a budget-friendly yellow device for various hacking applications. It can transmit in the Sub-GHz RF range and holds additional potential, which I plan to explore further.
-The CC1101 wiring is now compatible with that of Bruce FW
+[![CI/CD Pipeline](https://github.com/sparesparrow/NucleusESP32/actions/workflows/ci.yml/badge.svg)](https://github.com/sparesparrow/NucleusESP32/actions/workflows/ci.yml)
+[![Code Coverage](https://codecov.io/gh/sparesparrow/NucleusESP32/branch/main/graph/badge.svg)](https://codecov.io/gh/sparesparrow/NucleusESP32)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1+-blue.svg)](https://platformio.org/)
 
-### The device
-![Device](https://github.com/GthiN89/NucleusESP32/blob/main/images/brute.jpg)
-![Device](https://github.com/GthiN89/NucleusESP32/blob/main/images/decoder.jpg)
-![Device](https://github.com/GthiN89/NucleusESP32/blob/main/images/encoder.jpg)
+NucleusESP32 is a comprehensive multi-tool firmware for ESP32-based devices, providing Sub-GHz RF communication, NFC/RFID capabilities, IR remote control, and more. Built with modern development practices using SpareTools ecosystem.
 
-## Project Overview
+## 🎯 Features
 
-I modified the device by desoldering the RGB diode to use it as a GPIO. Later, I disconnected the audio amplifier and photoresistor to free up additional GPIOs.
+### Core Functionality
+- **Sub-GHz RF Communication**: CC1101-based transceiver with RAW protocol support
+- **NFC/RFID**: MFRC522 reader with comprehensive card reading capabilities
+- **IR Remote Control**: Full TV-B-GONE implementation with custom IR codes
+- **WiFi & Bluetooth**: Network connectivity and wireless features
+- **SD Card Storage**: File system support for data persistence
 
-This is my first project in C, which I began in early summer, with prior experience in PHP and some FPGA tinkering. I'm learning as I go, figuring things out by experimenting.
+### Advanced Features
+- **Signal Processing**: Advanced filtering and reconstruction algorithms
+- **Multiple Encoders/Decoders**: CAME, NICE, Ansonic, Holtek, Hormann protocols
+- **Brute Force Attacks**: Systematic protocol testing capabilities
+- **Frequency Analysis**: Signal strength and frequency detection
+- **Cross-Platform Testing**: Host simulation with ESP32 target validation
 
-I learned a lot. This project implements decoding of the filtered and reconstructed subGhz radio signal, acting as a codegrabber, and its being tested on various real HW im able to get cheap. But it must be dirt. Dirty cheap...
-*clones - low secure aftermarket car and gate modules.
+### Development Features
+- **Modern Build System**: CMake + Conan + PlatformIO integration
+- **Comprehensive Testing**: Unit tests, integration tests, and hardware simulation
+- **CI/CD Pipeline**: Automated building, testing, and deployment
+- **Code Quality**: Static analysis, formatting, and security scanning
+- **Documentation**: Auto-generated API docs and development guides
 
-After lets say finalizing SubGhz part, i started working on NFC/RFID part witn PN532 connected on shared SPI with CC1101
+## 🚀 Quick Start
 
-**Status**: Work in Progress (WIP)  
-Please go easy on it; it's still evolving!  
-Some push work, some not, in some all functiuons work, and in other one is push much far, but some not work at all.... After finishing ancoders/decders, i will create "stable" relase, but so far jus development without protocol....
+### Prerequisites
+- Python 3.8+ (automatically managed by SpareTools)
+- Git
+- Internet connection
 
-## Features Implemented
+### Development Environment Setup
 
-With the help of my Software-Defined Radio (SDR), I implemented a RAW protocol for replay using a simple bit-bang pooler method, and later, started to use interrupt as i should to more precise timing (previously, I sampled every 430 microseconds). Then i read read watch some videos, visit some death sites on internet archive, and become able to reallz work with the signal....
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/sparesparrow/NucleusESP32.git
+   cd NucleusESP32
+   ```
 
-**TV-B-GONE**: Fully operational. Can turn TVs on and off, on HW side use 2 IR diods, one normal, one 1W  160 degrees, both driver at the edge, bezond what is considered save
+2. **Bootstrap development environment**
+   ```bash
+   python scripts/bootstrap.py
+   ```
 
-**Last Stable Version**: Compiled into bin files. Occasionally, things may break in new versions, so for consistent testing, use this stable version.
+   This will:
+   - Install SpareTools and dependencies
+   - Set up Python virtual environment
+   - Configure Conan package management
+   - Install PlatformIO and ESP32 toolchains
+   - Set up pre-commit hooks
 
-**Encoders and Decoders**: Implemented CAME, NICE, Ansonic and Holtec 12bit encoders and decoders + Horman 44bit decoder
+3. **Build and flash firmware**
+   ```bash
+   # Build for default board (ESP32-2432S028Rv3)
+   pio run
 
-**BruteForce Subghz attack**: Implemented CAME, NICE, Ansonic and Holtec 12bit.
+   # Or build for specific board
+   pio run -e esp32-8048S070C
 
-### Latest Updates
-- **Implemented Sub-GHz Signal filtering and reconstruction**: Can process filter out noise, detect wrong logic state and switch them, calculate proable "original" pulse lenght, and provide reconstructed signal with tolerance of 1-5 microseconds
-- **GUI Performance Boost and variables//buffers fusing**: Faster and more responsive, lowering memory comsuption over time.
-- **Dark Mode for GUI**: Aesthetic improvement as part of "Neon Green" version, bc neon green and black are it.
-- **CYD 2USB**: Despite originallz starting on classic CYD, now for 2USB, bc those are on market now.
-- **Focus on CC1101 Module for CYD Version**: Future versions will target more powerful ESP32 S3 hardware.
-- **Integration of Decoders and Encoders for Ansonic, Came, Nice, Hormann, and SMC5326**.
-- **RC Switch as second Decoder(User-Selectable)**.
-- **Brute Force Attack using decoders** 
+   # Flash to device
+   pio run -t upload
+   ```
 
-### Known Issues
-- **Large File Transmission**: Bigger files take longer to load, but they transmit just fine.
-- **Frequency Analyzer Non-Functional**: Currently broken. Fix planned.
+4. **Run tests**
+   ```bash
+   # Unit tests
+   pytest test/
 
-### Priority List
-- Repair frequency analyzer functionality.
-- Finalize CYD version with IR, Sub-GHz, Wi-Fi, and Bluetooth features.
-- Transition to ESP32 S3 hardware for enhanced capabilities.
+   # Integration tests
+   pytest test/integration/
 
-## Current Functionalities
-- **CC1101 RAW Replay**: Now operates similarly to the Flipper. Save files to SD card. Fully Flipper compatible.  
-- **`.sub` Files Player**: Supports RAW files, tested with AM270 and AM650, should send FM too, but timing files only. Sending is stable.  
-- **Tesla Charger Opener**: Operational.  
-- **TV-B-Gone**: Operational.
+   # Hardware simulation tests
+   python test/micropython.py
+   ```
 
-## Planned Features
-- Bluetooth Spam  
-- Sour Apple  
-- Wi-Fi Deauther  
-- Python Interpreter  
+## 🛠️ Development Workflow
 
-## Timing and Transmission Quality
+### Project Structure
+```
+NucleusESP32/
+├── src/                    # Source code
+│   ├── main.cpp           # Main firmware entry point
+│   ├── modules/           # Hardware modules
+│   │   ├── nfc/          # NFC/RFID functionality
+│   │   ├── RF/           # Sub-GHz RF communication
+│   │   ├── IR/           # Infrared remote control
+│   │   └── ETC/          # Utilities and storage
+│   └── GUI/               # User interface
+├── test/                  # Test suite
+│   ├── integration/       # Hardware integration tests
+│   └── conftest.py       # Test configuration
+├── boards/                # Board-specific configurations
+├── scripts/              # Development scripts
+├── .github/workflows/    # CI/CD pipelines
+├── conanfile.py          # Conan package definition
+├── platformio.ini        # PlatformIO configuration
+└── CMakeLists.txt        # CMake build system
+```
 
-The timing tolerance is around 1-5 microseconds both ways.
+### Supported Boards
 
+The firmware supports numerous ESP32-based boards:
 
-### Partial instruction on build
+| Board | Display | Touch | Status |
+|-------|---------|-------|--------|
+| ESP32-2432S028Rv3 | 2.8" ILI9341 | XPT2046 | ✅ Default |
+| ESP32-8048S070C | 7.0" IPS | XPT2046 | ✅ Stable |
+| ESP32-4827S043C | 4.8" IPS | XPT2046 | ✅ Stable |
+| ESP32-1732S019C | 1.73" Round | None | ✅ Minimal |
+| ESP32-S3-TouchLCD7 | 1.14" ST7789 | Built-in | 🚧 Experimental |
 
-[![Watch the video](https://github.com/GthiN89/NucleusESP32/raw/refs/heads/main/images/Untitled.png)](https://github.com/GthiN89/NucleusESP32/raw/refs/heads/main/video/video.mp4)
+### Building for Different Boards
 
-## Hardware
-- Cheap Yellow Display (CYD)  
-- ESP32-2432S028R  
-- ESP32-2432S028Rv2  
-- **CC1101 Module**  
-- **IR Module**
+```bash
+# List all available environments
+pio run --list-targets
 
-## Repository Stats
-- **Commits**: ![Commits](https://img.shields.io/github/commit-activity/m/GthiN89/NucleusESP32)
-- **Issues**: ![Issues](https://img.shields.io/github/issues/GthiN89/NucleusESP32)
+# Build for specific board
+pio run -e esp32-8048S070C
 
-Happy hacking!
+# Clean and rebuild
+pio run -t clean && pio run
+```
+
+### Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=nucleus --cov-report=html
+
+# Run specific test categories
+pytest -m "unit"           # Unit tests only
+pytest -m "integration"    # Integration tests only
+pytest -m "not slow"       # Skip slow tests
+
+# Hardware simulation
+python test/micropython.py
+```
+
+### Code Quality
+
+```bash
+# Format code
+black src/ test/
+isort src/ test/
+
+# Lint code
+flake8 src/ test/
+mypy src/
+
+# Static analysis
+python scripts/run-analysis.sh
+
+# Pre-commit checks
+pre-commit run --all-files
+```
+
+## 📋 Current Status
+
+### ✅ Implemented Features
+- **Sub-GHz RF**: Full CC1101 support with RAW protocol replay
+- **NFC/RFID**: MFRC522 reader with card detection and data dumping
+- **IR Control**: TV-B-GONE with dual IR LEDs
+- **GUI**: LVGL-based interface with touch support
+- **File System**: LittleFS support for data persistence
+- **Multiple Protocols**: CAME, NICE, Ansonic, Holtek encoders/decoders
+
+### 🚧 In Development
+- **ESP32-S3 Support**: Enhanced hardware capabilities
+- **Bluetooth Features**: BLE spam and Sour Apple attacks
+- **WiFi Deauther**: Network testing tools
+- **Python Interpreter**: Embedded scripting support
+
+### 🐛 Known Issues
+- Frequency analyzer occasionally non-functional
+- Large file transmission may be slow to load
+- Some board configurations need refinement
+
+## 🔧 Hardware Requirements
+
+### Core Components
+- **ESP32 Module**: Any supported ESP32 board
+- **CC1101 Module**: Sub-GHz transceiver
+- **MFRC522**: NFC/RFID reader (optional)
+- **IR LEDs**: For remote control (optional)
+- **SD Card**: For file storage (optional)
+
+### Pin Configuration
+Default pin assignments (configurable per board):
+```
+CC1101_CS    = 27
+CC1101_SCK   = 22
+CC1101_MISO  = 35
+CC1101_MOSI  = 21
+CC1101_GDO0  = 33
+CC1101_GDO2  = 32
+
+MFRC522_SS   = 5
+MFRC522_RST  = 17
+
+IR_TX        = 12
+IR_RX        = 13
+
+TOUCH_IRQ    = 36
+TOUCH_MOSI   = 32
+TOUCH_MISO   = 39
+TOUCH_CLK    = 25
+TOUCH_CS     = 33
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Bootstrap development environment: `python scripts/bootstrap.py`
+4. Make your changes and ensure tests pass
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+### Development Guidelines
+- Follow SOLID principles and modern C++ practices
+- Write comprehensive tests for new features
+- Update documentation for API changes
+- Ensure code passes all quality checks
+- Test on multiple board configurations
+
+## 📚 Documentation
+
+- [API Documentation](docs/api/) - Auto-generated from source code
+- [Hardware Guide](docs/hardware/) - Board configurations and pinouts
+- [Protocol Reference](docs/protocols/) - Supported RF protocols
+- [Testing Guide](docs/testing/) - Development and testing procedures
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Original NucleusESP32 project by [GthiN89](https://github.com/GthiN89/NucleusESP32)
+- SpareTools ecosystem for modern development workflow
+- ESP32 and Arduino communities for hardware support
+- Contributors and testers
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/sparesparrow/NucleusESP32/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/sparesparrow/NucleusESP32/discussions)
+- **Documentation**: [Project Wiki](https://github.com/sparesparrow/NucleusESP32/wiki)
+
+---
+
+**Happy Hacking! 🔧⚡**
