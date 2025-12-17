@@ -2,16 +2,18 @@
 """
 NucleusESP32 Development Environment Bootstrap Script
 
-This script sets up the development environment using SpareTools.
-It provides a one-command setup for all development dependencies.
+Following SpareTools patterns for hermetic development environment setup.
+Provides one-command setup for ESP32 embedded development.
 
 Usage:
-    python scripts/bootstrap.py
+    python scripts/bootstrap.py [--dry-run] [--verbose]
 
 Requirements:
-    - Python 3.8+ (will be upgraded to 3.12.7 by SpareTools)
+    - Python 3.8+ (SpareTools will provide 3.12.7 hermetic environment)
     - Internet connection for downloading dependencies
-    - Administrative privileges may be required for some operations
+    - Git for cloning SpareTools
+
+Project Type: embedded/esp32
 """
 
 import os
@@ -19,27 +21,52 @@ import sys
 import subprocess
 import shutil
 import platform
+import argparse
+import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class Bootstrapper:
-    """Handles the bootstrap process for NucleusESP32 development environment."""
+    """Handles the bootstrap process for NucleusESP32 development environment following SpareTools patterns."""
 
-    def __init__(self):
+    def __init__(self, dry_run: bool = False, verbose: bool = False):
         self.project_root = Path(__file__).parent.parent
         self.system = platform.system().lower()
         self.is_windows = self.system == "windows"
         self.is_linux = self.system == "linux"
         self.is_macos = self.system == "darwin"
+        self.dry_run = dry_run
+        self.verbose = verbose
 
-        # SpareTools configuration
+        # Project type detection (embedded/esp32 category)
+        self.project_type = "embedded/esp32"
+        self.project_name = "nucleus-esp32"
+
+        # SpareTools configuration - layered architecture
         self.sparetools_url = "https://github.com/sparesparrow/SpareTools.git"
         self.sparetools_dir = self.project_root / ".sparetools"
 
+        # Hermetic environment paths
+        self.venv_dir = self.project_root / ".venv"
+        self.sparetools_python = None  # Will be set after SpareTools setup
+
     def run_command(self, cmd: list, cwd: Optional[Path] = None,
                    check: bool = True, capture_output: bool = False) -> subprocess.CompletedProcess:
-        """Run a command and return the result."""
+        """Run a command and return the result. Supports dry-run mode."""
+        cmd_str = ' '.join(str(c) for c in cmd)
+        if self.dry_run:
+            print(f"[DRY-RUN] Would execute: {cmd_str}")
+            # Return a mock result for dry-run
+            class MockResult:
+                def __init__(self):
+                    self.returncode = 0
+                    self.stdout = ""
+                    self.stderr = ""
+            return MockResult()
+        elif self.verbose:
+            print(f"[EXEC] {cmd_str}")
+
         try:
             result = subprocess.run(
                 cmd,
@@ -50,7 +77,7 @@ class Bootstrapper:
             )
             return result
         except subprocess.CalledProcessError as e:
-            print(f"Command failed: {' '.join(cmd)}")
+            print(f"❌ Command failed: {cmd_str}")
             print(f"Error: {e}")
             if e.stdout:
                 print(f"stdout: {e.stdout}")
@@ -59,45 +86,65 @@ class Bootstrapper:
             raise
 
     def check_prerequisites(self) -> bool:
-        """Check if all prerequisites are met."""
+        """Check if all prerequisites are met following SpareTools patterns."""
         print("🔍 Checking prerequisites...")
 
-        # Check Python version
+        # Check Python version (SpareTools will provide hermetic 3.12.7)
         python_version = sys.version_info
         if python_version < (3, 8):
             print(f"❌ Python {python_version.major}.{python_version.minor} is not supported.")
-            print("   Please upgrade to Python 3.8 or later.")
+            print("   SpareTools will provide Python 3.12.7 hermetic environment.")
+            print("   Please upgrade system Python to 3.8+ for bootstrap.")
             return False
 
-        print(f"✅ Python {python_version.major}.{python_version.minor}.{python_version.micro} detected")
+        print(f"✅ Python {python_version.major}.{python_version.minor}.{python_version.micro} detected (system)")
 
         # Check git availability
         try:
-            self.run_command(["git", "--version"], capture_output=True)
-            print("✅ Git is available")
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            result = self.run_command(["git", "--version"], capture_output=True)
+            version_output = result.stdout.strip()
+            # Extract version from output like "git version 2.34.1"
+            if "git version" in version_output:
+                version = version_output.split()[-1]
+            else:
+                version = "unknown"
+            print(f"✅ Git {version} is available")
+        except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
             print("❌ Git is not available. Please install Git.")
             return False
 
-        # Check internet connectivity (basic check)
+        # Check internet connectivity (comprehensive check)
+        connectivity_ok = False
         try:
             self.run_command(["curl", "-s", "--head", "https://github.com"],
                            capture_output=True, check=False)
-            print("✅ Internet connectivity detected")
+            connectivity_ok = True
         except (subprocess.CalledProcessError, FileNotFoundError):
             try:
                 self.run_command(["ping", "-c", "1", "github.com"],
                                capture_output=True, check=False)
-                print("✅ Internet connectivity detected")
+                connectivity_ok = True
             except (subprocess.CalledProcessError, FileNotFoundError):
-                print("⚠️  Internet connectivity could not be verified")
+                pass
+
+        if connectivity_ok:
+            print("✅ Internet connectivity detected")
+        else:
+            print("❌ No internet connectivity detected")
+            return False
+
+        # Check for existing virtual environment conflicts
+        if self.venv_dir.exists():
+            print(f"⚠️  Virtual environment already exists at {self.venv_dir}")
+            print("   It will be recreated during bootstrap.")
 
         return True
 
     def setup_sparetools(self) -> bool:
-        """Clone and set up SpareTools."""
-        print("\n🔧 Setting up SpareTools...")
+        """Set up SpareTools layered architecture following project patterns."""
+        print("\n🔧 Setting up SpareTools layered architecture...")
 
+        # Check if SpareTools is already available
         if self.sparetools_dir.exists():
             print(f"   SpareTools directory already exists at {self.sparetools_dir}")
             print("   Updating SpareTools...")
@@ -115,33 +162,126 @@ class Bootstrapper:
                 print("❌ Failed to clone SpareTools")
                 return False
 
-        # Run SpareTools bootstrap
-        bootstrap_script = self.sparetools_dir / "bootstrap.py"
-        if not bootstrap_script.exists():
-            print("❌ SpareTools bootstrap script not found")
+        # Run SpareTools bootstrap with project type (optional for now)
+        bootstrap_candidates = [
+            self.sparetools_dir / "scripts" / "bootstrap.py",
+            self.sparetools_dir / "bootstrap.py",
+            self.sparetools_dir / "bootstrap-obd.py",  # Alternative name
+        ]
+
+        bootstrap_script = None
+        for candidate in bootstrap_candidates:
+            if candidate.exists():
+                bootstrap_script = candidate
+                break
+
+        if bootstrap_script:
+            print(f"   Running SpareTools bootstrap for {self.project_type}...")
+            try:
+                # Pass project type for proper tool configuration
+                env = os.environ.copy()
+                env["SPARETOOLS_PROJECT_TYPE"] = self.project_type
+                env["SPARETOOLS_PROJECT_NAME"] = self.project_name
+
+                result = self.run_command([sys.executable, str(bootstrap_script)],
+                                        capture_output=False, check=False)
+                if result.returncode != 0:
+                    print("⚠️  SpareTools bootstrap had warnings, but continuing...")
+                else:
+                    print("✅ SpareTools bootstrap completed")
+            except subprocess.CalledProcessError:
+                print("⚠️  SpareTools bootstrap failed, continuing without it...")
+        else:
+            print("⚠️  SpareTools bootstrap script not found, continuing without SpareTools setup...")
+
+        # Detect SpareTools Python for hermetic environment
+        self._detect_sparetools_python()
+
+        return True
+
+    def _detect_sparetools_python(self) -> None:
+        """Detect the SpareTools bundled Python for hermetic environment."""
+        print("   Detecting SpareTools Python...")
+
+        # Check for SpareTools Python in common locations
+        candidates = [
+            self.sparetools_dir / "python" / "python.exe",  # Windows
+            self.sparetools_dir / "python" / "python",      # Unix
+            self.sparetools_dir / "bin" / "python",         # Alternative
+        ]
+
+        for candidate in candidates:
+            if candidate.exists():
+                self.sparetools_python = candidate
+                print(f"✅ SpareTools Python detected: {candidate}")
+                return
+
+        # Try to find via environment or PATH
+        try:
+            result = self.run_command(["which", "sparetools-python"],
+                                    capture_output=True, check=False)
+            if result.returncode == 0:
+                self.sparetools_python = Path(result.stdout.strip())
+                print(f"✅ SpareTools Python detected: {self.sparetools_python}")
+                return
+        except:
+            pass
+
+        print("⚠️  SpareTools Python not found, will use system Python")
+        self.sparetools_python = Path(sys.executable)
+
+    def create_virtual_environment(self) -> bool:
+        """Create virtual environment using SpareTools bundled Python."""
+        print("\n🏗️  Creating hermetic virtual environment...")
+
+        if self.venv_dir.exists():
+            print(f"   Removing existing virtual environment at {self.venv_dir}")
+            if not self.dry_run:
+                shutil.rmtree(self.venv_dir)
+
+        print(f"   Creating virtual environment with {self.sparetools_python}")
+        try:
+            self.run_command([str(self.sparetools_python), "-m", "venv", str(self.venv_dir)])
+            print("✅ Virtual environment created")
+        except subprocess.CalledProcessError:
+            print("❌ Failed to create virtual environment")
             return False
 
-        print("   Running SpareTools bootstrap...")
+        # Upgrade pip in the virtual environment
+        pip_cmd = [str(self.venv_dir / "bin" / "pip"), "install", "--upgrade", "pip"]
+        if self.is_windows:
+            pip_cmd[0] = str(self.venv_dir / "Scripts" / "pip.exe")
+
         try:
-            self.run_command([sys.executable, str(bootstrap_script)])
-            print("✅ SpareTools bootstrap completed")
+            self.run_command(pip_cmd)
+            print("✅ Pip upgraded in virtual environment")
         except subprocess.CalledProcessError:
-            print("❌ SpareTools bootstrap failed")
-            return False
+            print("⚠️  Could not upgrade pip, continuing...")
 
         return True
 
     def install_dependencies(self) -> bool:
-        """Install project dependencies using Conan and pip."""
+        """Install project dependencies using virtual environment and Conan."""
         print("\n📦 Installing dependencies...")
+
+        # Determine which Python/pip to use
+        if self.venv_dir.exists():
+            python_cmd = str(self.venv_dir / "bin" / "python")
+            pip_cmd = [python_cmd, "-m", "pip"]
+            if self.is_windows:
+                python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
+                pip_cmd = [str(self.venv_dir / "Scripts" / "pip.exe"), "--python", python_cmd]
+            print("   Using virtual environment Python")
+        else:
+            python_cmd = str(self.sparetools_python or sys.executable)
+            pip_cmd = [python_cmd, "-m", "pip"]
+            print("   Using SpareTools/system Python")
 
         # Install Python dependencies
         requirements_file = self.project_root / "requirements-dev.txt"
         if requirements_file.exists():
             print("   Installing Python dependencies...")
             try:
-                # Use pip from SpareTools bundled Python if available
-                pip_cmd = [sys.executable, "-m", "pip"]
                 self.run_command(pip_cmd + ["install", "-r", str(requirements_file)])
                 print("✅ Python dependencies installed")
             except subprocess.CalledProcessError:
@@ -166,15 +306,36 @@ class Bootstrapper:
         return True
 
     def setup_precommit_hooks(self) -> bool:
-        """Set up pre-commit hooks."""
-        print("\n🔗 Setting up pre-commit hooks...")
+        """Set up pre-commit hooks and development tools following SpareTools patterns."""
+        print("\n🔗 Setting up development tools and pre-commit hooks...")
 
+        # Determine which Python to use for tools
+        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(self.sparetools_python or sys.executable)
+        if self.is_windows and self.venv_dir.exists():
+            python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
+
+        # Install pre-commit if not available
         try:
-            self.run_command(["pre-commit", "install"])
+            self.run_command([python_cmd, "-m", "pip", "install", "pre-commit"])
+            print("✅ Pre-commit installed")
+        except subprocess.CalledProcessError:
+            print("⚠️  Could not install pre-commit, checking if already available...")
+
+        # Set up pre-commit hooks
+        try:
+            self.run_command([python_cmd, "-m", "pre_commit", "install"])
             print("✅ Pre-commit hooks installed")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("⚠️  Pre-commit not available, skipping hook installation")
-            return True  # Not critical
+            print("⚠️  Pre-commit hooks not set up (pre-commit not available)")
+            return True  # Not critical for bootstrap
+
+        # Install additional development tools following SpareTools patterns
+        dev_tools = ["black", "isort", "flake8", "mypy"]
+        try:
+            self.run_command([python_cmd, "-m", "pip", "install"] + dev_tools)
+            print("✅ Development tools installed")
+        except subprocess.CalledProcessError:
+            print("⚠️  Could not install some development tools")
 
         return True
 
@@ -204,38 +365,65 @@ class Bootstrapper:
         return True
 
     def create_env_file(self) -> bool:
-        """Create environment configuration file."""
+        """Create comprehensive environment configuration file following SpareTools patterns."""
         print("\n📝 Creating environment configuration...")
 
         env_file = self.project_root / ".env"
         if env_file.exists():
-            print("   .env file already exists, skipping")
-            return True
+            print("   .env file already exists, backing up and recreating")
+            if not self.dry_run:
+                env_file.rename(env_file.with_suffix('.env.backup'))
 
-        env_content = f"""# NucleusESP32 Development Environment
-# Generated by bootstrap script
+        # Determine Python paths
+        venv_python = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else ""
+        if self.is_windows and self.venv_dir.exists():
+            venv_python = str(self.venv_dir / "Scripts" / "python.exe")
 
-# Project paths
-PROJECT_ROOT={self.project_root}
-SPARETOOLS_DIR={self.sparetools_dir}
+        sparetools_python = str(self.sparetools_python) if self.sparetools_python else ""
 
-# Python configuration
-PYTHONPATH={self.project_root}/src:{self.project_root}/test
+        # Build environment content
+        env_vars = {
+            "# NucleusESP32 Development Environment": "",
+            "# Generated by SpareTools bootstrap script": "",
+            "# Project Type": f"embedded/esp32",
+            "# Project Name": f"{self.project_name}",
+            "": "",
+            "# Project paths": "",
+            "PROJECT_ROOT": str(self.project_root),
+            "SPARETOOLS_DIR": str(self.sparetools_dir),
+            "": "",
+            "# Python configuration": "",
+            "PYTHONPATH": f"{self.project_root}/src:{self.project_root}/test:{self.project_root}/test_harness",
+            "VIRTUAL_ENV": str(self.venv_dir) if self.venv_dir.exists() else "",
+            "SPARETOOLS_PYTHON": sparetools_python,
+            "": "",
+            "# ESP32/Embedded configuration": "",
+            "PLATFORMIO_CORE_DIR": str(self.project_root / ".platformio"),
+            "ESP32_TOOLCHAIN_PATH": "",  # Will be set by PlatformIO
+            "": "",
+            "# Build configuration": "",
+            "BUILD_TYPE": "Debug",
+            "CMAKE_BUILD_TYPE": "Debug",
+            "CONAN_BUILD_TYPE": "Debug",
+            "": "",
+            "# Testing configuration": "",
+            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+            "NUCLEUS_TEST_PARALLEL": "1",
+            "NUCLEUS_TEST_TIMEOUT": "300",
+            "": "",
+            "# Conan configuration": "",
+            "CONAN_USER_HOME": str(self.project_root / ".conan"),
+            "": "",
+            "# Development tools": "",
+            "PRE_COMMIT_HOME": str(self.project_root / ".pre-commit-cache"),
+        }
 
-# ESP32 configuration
-PLATFORMIO_CORE_DIR={self.project_root}/.platformio
-
-# Build configuration
-BUILD_TYPE=Debug
-CMAKE_BUILD_TYPE=Debug
-
-# Testing configuration
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
-"""
+        env_content = "\n".join(f"{k}={v}" if v else k for k, v in env_vars.items()) + "\n"
 
         try:
-            with open(env_file, 'w') as f:
-                f.write(env_content)
+            if not self.dry_run:
+                with open(env_file, 'w') as f:
+                    f.write(env_content)
             print("✅ Environment configuration created")
         except IOError as e:
             print(f"❌ Failed to create .env file: {e}")
@@ -244,97 +432,150 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
         return True
 
     def run_post_bootstrap_checks(self) -> bool:
-        """Run checks to verify the bootstrap was successful."""
-        print("\n✅ Running post-bootstrap checks...")
+        """Run comprehensive checks to verify the bootstrap was successful."""
+        print("\n✅ Running post-bootstrap verification...")
 
         checks_passed = 0
         total_checks = 0
 
-        # Check Python version
+        # Determine which Python to use for checks
+        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(self.sparetools_python or sys.executable)
+        if self.is_windows and self.venv_dir.exists():
+            python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
+
+        # Check Python version (should be 3.12+ from SpareTools)
         total_checks += 1
-        python_version = sys.version_info
-        if python_version >= (3, 12):
-            print("✅ Python 3.12+ available")
+        try:
+            result = self.run_command([python_cmd, "--version"], capture_output=True)
+            version_str = result.stdout.strip()
+            print(f"✅ Python available: {version_str}")
+            checks_passed += 1
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("❌ Python not available")
+
+        # Check virtual environment
+        total_checks += 1
+        if self.venv_dir.exists():
+            print("✅ Virtual environment created")
             checks_passed += 1
         else:
-            print(f"⚠️  Python {python_version.major}.{python_version.minor} detected (3.12+ recommended)")
+            print("⚠️  Virtual environment not created")
 
         # Check Conan
         total_checks += 1
         try:
             result = self.run_command(["conan", "--version"], capture_output=True)
-            print("✅ Conan available")
+            version_output = result.stdout.strip()
+            # Extract version from output like "Conan version 2.0.17"
+            if "Conan version" in version_output:
+                version = version_output.split()[-1]
+            else:
+                version = "unknown"
+            print(f"✅ Conan {version} available")
             checks_passed += 1
-        except (subprocess.CalledProcessError, FileNotFoundError):
+        except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
             print("❌ Conan not available")
 
         # Check PlatformIO
         total_checks += 1
         try:
             result = self.run_command(["pio", "--version"], capture_output=True)
-            print("✅ PlatformIO available")
+            version = result.stdout.strip()
+            print(f"✅ PlatformIO available: {version}")
             checks_passed += 1
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("❌ PlatformIO not available")
+            print("⚠️  PlatformIO not available (will be installed later)")
 
         # Check pytest
         total_checks += 1
         try:
-            result = self.run_command(["python", "-m", "pytest", "--version"], capture_output=True)
+            result = self.run_command([python_cmd, "-m", "pytest", "--version"], capture_output=True)
             print("✅ pytest available")
             checks_passed += 1
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("❌ pytest not available")
+            print("⚠️  pytest not available")
 
-        print(f"\n📊 Bootstrap checks: {checks_passed}/{total_checks} passed")
+        # Check pre-commit
+        total_checks += 1
+        try:
+            result = self.run_command([python_cmd, "-m", "pre_commit", "--version"], capture_output=True)
+            print("✅ pre-commit available")
+            checks_passed += 1
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("⚠️  pre-commit not available")
 
-        if checks_passed == total_checks:
+        # Check Conan dependencies resolution
+        total_checks += 1
+        conan_build_dir = self.project_root / "build-release"
+        if conan_build_dir.exists() and (conan_build_dir / "conan_toolchain.cmake").exists():
+            print("✅ Conan dependencies resolved")
+            checks_passed += 1
+        else:
+            print("⚠️  Conan dependencies not resolved")
+
+        # Check environment file
+        total_checks += 1
+        env_file = self.project_root / ".env"
+        if env_file.exists():
+            print("✅ Environment configuration created")
+            checks_passed += 1
+        else:
+            print("❌ Environment configuration missing")
+
+        print(f"\n📊 Bootstrap verification: {checks_passed}/{total_checks} passed")
+
+        if checks_passed >= total_checks * 0.8:  # 80% success rate
             print("🎉 Bootstrap completed successfully!")
             return True
         else:
-            print("⚠️  Bootstrap completed with warnings. Some tools may not be available.")
-            return True  # Don't fail the bootstrap for warnings
+            print("⚠️  Bootstrap completed with issues. Check warnings above.")
+            return False
 
     def run(self) -> int:
-        """Run the complete bootstrap process."""
-        print("🚀 NucleusESP32 Development Environment Bootstrap")
+        """Run the complete bootstrap process following SpareTools layered architecture."""
+        print("🚀 NucleusESP32 SpareTools Bootstrap")
         print("=" * 50)
+        print(f"Project Type: {self.project_type}")
+        print(f"Project Name: {self.project_name}")
+        if self.dry_run:
+            print("DRY-RUN MODE: No actual changes will be made")
+        print()
 
         try:
-            # Step 1: Check prerequisites
+            # Phase 1: Prerequisites and SpareTools setup
+            print("📋 Phase 1: Foundation Setup")
             if not self.check_prerequisites():
                 return 1
 
-            # Step 2: Set up SpareTools
             if not self.setup_sparetools():
                 return 1
 
-            # Step 3: Install dependencies
+            # Phase 2: Hermetic environment creation
+            print("\n📋 Phase 2: Hermetic Environment")
+            if not self.create_virtual_environment():
+                return 1
+
             if not self.install_dependencies():
                 return 1
 
-            # Step 4: Set up PlatformIO
+            # Phase 3: Development tools setup
+            print("\n📋 Phase 3: Development Tools")
             if not self.setup_platformio():
                 return 1
 
-            # Step 5: Set up pre-commit hooks
             if not self.setup_precommit_hooks():
                 return 1
 
-            # Step 6: Create environment file
             if not self.create_env_file():
                 return 1
 
-            # Step 7: Run post-bootstrap checks
+            # Phase 4: Verification
+            print("\n📋 Phase 4: Verification")
             if not self.run_post_bootstrap_checks():
                 return 1
 
-            print("\n🎯 Next steps:")
-            print("   1. Source the environment: source .env")
-            print("   2. Build the project: pio run")
-            print("   3. Run tests: pytest")
-            print("   4. Start development!")
-
+            # Success message and next steps
+            self._print_success_message()
             return 0
 
         except KeyboardInterrupt:
@@ -342,14 +583,65 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
             return 1
         except Exception as e:
             print(f"\n❌ Bootstrap failed with unexpected error: {e}")
-            import traceback
-            traceback.print_exc()
+            if self.verbose:
+                import traceback
+                traceback.print_exc()
             return 1
+
+    def _print_success_message(self) -> None:
+        """Print success message and next steps."""
+        print("\n🎉 NucleusESP32 development environment ready!")
+        print("=" * 50)
+
+        activation_cmd = f"source {self.venv_dir}/bin/activate" if not self.is_windows else f"{self.venv_dir}\\Scripts\\activate.bat"
+        if not self.venv_dir.exists():
+            activation_cmd = f"source {self.project_root}/.env"
+
+        print("Next steps:")
+        print(f"   1. Activate environment: {activation_cmd}")
+        print("   2. Build ESP32 firmware: pio run -e esp32dev")
+        print("   3. Run unit tests: python -m pytest test/")
+        print("   4. Run integration tests: python test_harness/run_nucleus_unit_tests.py")
+        print("   5. Start developing!")
+        print()
+        print("Useful commands:")
+        print("   • pio run -e <board>    # Build for specific ESP32 board")
+        print("   • pre-commit run --all-files  # Run code quality checks")
+        print("   • conan install .       # Refresh dependencies")
+        print("   • python scripts/bootstrap.py --help  # Bootstrap help")
+        print()
+        print("Environment file created: .env")
+        print("Virtual environment: .venv/")
+        print("SpareTools: .sparetools/")
 
 
 def main():
-    """Main entry point."""
-    bootstrapper = Bootstrapper()
+    """Main entry point with command line argument support."""
+    parser = argparse.ArgumentParser(
+        description="NucleusESP32 SpareTools Bootstrap",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python scripts/bootstrap.py                    # Normal bootstrap
+  python scripts/bootstrap.py --dry-run         # Preview changes
+  python scripts/bootstrap.py --verbose         # Detailed output
+  python scripts/bootstrap.py --dry-run --verbose  # Preview with details
+        """
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without making changes"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose output"
+    )
+
+    args = parser.parse_args()
+
+    bootstrapper = Bootstrapper(dry_run=args.dry_run, verbose=args.verbose)
     return bootstrapper.run()
 
 

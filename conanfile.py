@@ -1,12 +1,19 @@
 from conan import ConanFile
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 from conan.tools.layout import basic_layout
+from conan.tools.files import copy
+import os
 
 
 class NucleusESP32Conan(ConanFile):
+    """NucleusESP32 Conan package following SpareTools layered architecture."""
+
     name = "nucleus-esp32"
     version = "0.1.0"
     package_type = "application"
+
+    # Foundation layer - SpareTools base provides common utilities and configuration
+    python_requires = "sparetools-base/2.0.0"
 
     # Optional metadata
     license = "MIT"
@@ -15,17 +22,33 @@ class NucleusESP32Conan(ConanFile):
     description = "ESP32-based multi-tool device firmware"
     topics = ("esp32", "embedded", "rf", "nfc", "iot")
 
-    # Binary configuration
+    # Binary configuration - focus on host testing, not ESP32 cross-compilation
     settings = "os", "compiler", "build_type", "arch"
 
     # Sources are located in the same place as this recipe
-    exports_sources = "CMakeLists.txt", "src/*", "include/*", "test/*", "platformio.ini"
+    exports_sources = "CMakeLists.txt", "src/*", "include/*", "test/*", "test_harness/*"
 
     def layout(self):
         basic_layout(self, src_folder=".")
 
+    def build_requirements(self):
+        # Tools layer - SpareTools CPython provides hermetic Python environment
+        # Enable SpareTools CPython for bundled Python environment
+        self.tool_requires("sparetools-cpython/3.12.7")
+
+        # Test harness for Python integration tests (ngapy-style)
+        # Enable test harness when available from SpareTools
+        # self.tool_requires("sparetools-test-harness/2.0.0")
+
+        # Shared development tools - enable for development environment
+        self.tool_requires("sparetools-shared-dev-tools/1.0.0")
+
+    def requirements(self):
+        # Testing framework for host-based C++ unit tests
+        self.requires("gtest/1.14.0")
+
     def generate(self):
-        # Generate CMake toolchain and dependencies for cross-compilation
+        # Generate CMake toolchain and dependencies for host testing
         tc = CMakeToolchain(self)
         tc.generate()
 
@@ -41,26 +64,30 @@ class NucleusESP32Conan(ConanFile):
         cmake = CMake(self)
         cmake.install()
 
-    def build_requirements(self):
-        # PlatformIO for ESP32 builds
-        self.tool_requires("platformio/6.1.11")
-
-        # Development tools from SpareTools
-        self.tool_requires("cpython/3.12.7")
-        self.tool_requires("shared-dev-tools/1.0.0")
-
-    def requirements(self):
-        # Testing framework
-        self.test_requires("gtest/1.14.0")
-
-        # Mock libraries for testing
-        self.test_requires("mock/1.0.0")
+        # Copy test harness Python modules (following ngapy-dev pattern)
+        if os.path.exists(os.path.join(self.source_folder, "test_harness")):
+            copy(self, "test_harness/**/*.py",
+                 src=self.source_folder,
+                 dst=os.path.join(self.package_folder, "test_harness"))
 
     def package_info(self):
-        # Define components for different modules
-        self.cpp_info.components["rf_module"].libs = ["rf"]
-        self.cpp_info.components["nfc_module"].libs = ["nfc"]
-        self.cpp_info.components["ir_module"].libs = ["ir"]
+        # Define components for different modules (when built)
+        # Note: These will be populated when actual libraries are built
+        # self.cpp_info.components["rf_module"].libs = ["rf"]
+        # self.cpp_info.components["nfc_module"].libs = ["nfc"]
+        # self.cpp_info.components["ir_module"].libs = ["ir"]
 
-        # Define executable
-        self.cpp_info.exes = ["nucleus-esp32"]
+        # Python test environment setup following SpareTools patterns
+        # Use buildenv_info and runenv_info for Conan 2.x compatibility
+        self.buildenv_info.define("NUCLEUS_PACKAGE_DIR", self.package_folder)
+        self.buildenv_info.append_path("PYTHONPATH", self.package_folder)
+        if os.path.exists(os.path.join(self.package_folder, "test_harness")):
+            self.buildenv_info.append_path("PYTHONPATH", os.path.join(self.package_folder, "test_harness"))
+
+        self.runenv_info.define("NUCLEUS_PACKAGE_DIR", self.package_folder)
+        self.runenv_info.append_path("PYTHONPATH", self.package_folder)
+        if os.path.exists(os.path.join(self.package_folder, "test_harness")):
+            self.runenv_info.append_path("PYTHONPATH", os.path.join(self.package_folder, "test_harness"))
+
+        # Mark as development package following SpareTools conventions
+        self.cpp_info.libs = []  # No libraries provided at package level

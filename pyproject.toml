@@ -173,10 +173,11 @@ addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "--cov=nucleus",
-    "--cov-report=term-missing",
-    "--cov-report=xml",
-    "--cov-report=html",
+    # Coverage disabled by default - enable with --cov when pytest-cov is available
+    # "--cov=nucleus",
+    # "--cov-report=term-missing",
+    # "--cov-report=xml",
+    # "--cov-report=html",
 ]
 testpaths = ["test"]
 python_files = ["test_*.py", "*_test.py"]
@@ -187,6 +188,7 @@ markers = [
     "hardware: marks tests that require hardware (deselect with '-m \"not hardware\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "simulation: marks tests as hardware simulation tests",
 ]
 filterwarnings = [
     "error",
