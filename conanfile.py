@@ -12,36 +12,39 @@ class NucleusESP32Conan(ConanFile):
     version = "0.1.0"
     package_type = "application"
 
-    # Foundation layer - SpareTools base provides common utilities and configuration
-    python_requires = "sparetools-base/2.0.0"
+# Foundation layer - SpareTools base provides common utilities and configuration
+python_requires = "sparetools-base/2.0.0"
 
-    # Optional metadata
-    license = "MIT"
-    author = "NucleusESP32 Team"
-    url = "https://github.com/sparesparrow/NucleusESP32"
-    description = "ESP32-based multi-tool device firmware"
-    topics = ("esp32", "embedded", "rf", "nfc", "iot")
+# Optional metadata
+license = "MIT"
+author = "NucleusESP32 Team"
+url = "https://github.com/sparesparrow/NucleusESP32"
+description = "ESP32-based multi-tool device firmware"
+topics = ("esp32", "embedded", "rf", "nfc", "iot")
 
-    # Binary configuration - focus on host testing, not ESP32 cross-compilation
-    settings = "os", "compiler", "build_type", "arch"
+# Binary configuration - focus on host testing, not ESP32 cross-compilation
+settings = "os", "compiler", "build_type", "arch"
 
-    # Sources are located in the same place as this recipe
-    exports_sources = "CMakeLists.txt", "src/*", "include/*", "test/*", "test_harness/*"
+# Sources are located in the same place as this recipe
+exports_sources = "CMakeLists.txt", "src/*", "include/*", "test/*", "test_harness/*"
 
-    def layout(self):
-        basic_layout(self, src_folder=".")
+def layout(self):
+    basic_layout(self, src_folder=".")
 
-    def build_requirements(self):
-        # Tools layer - SpareTools CPython provides hermetic Python environment
-        # Enable SpareTools CPython for bundled Python environment
-        self.tool_requires("sparetools-cpython/3.12.7")
+def build_requirements(self):
+    # Tools layer - SpareTools CPython provides hermetic Python environment
+    # Enable SpareTools CPython for bundled Python environment
+    self.tool_requires("sparetools-cpython/3.12.7")
 
-        # Test harness for Python integration tests (ngapy-style)
-        # Enable test harness when available from SpareTools
-        # self.tool_requires("sparetools-test-harness/2.0.0")
+    # Test harness for Python integration tests (ngapy-style)
+    # Enable test harness when available from SpareTools
+    self.tool_requires("sparetools-test-harness/2.0.0")
 
-        # Shared development tools - enable for development environment
-        self.tool_requires("sparetools-shared-dev-tools/1.0.0")
+    # Shared development tools - enable for development environment
+    self.tool_requires("sparetools-shared-dev-tools/2.0.0")
+
+    # ESP32-specific bootstrap tools
+    self.tool_requires("sparetools-bootstrap/2.0.0")
 
     def requirements(self):
         # Testing framework for host-based C++ unit tests

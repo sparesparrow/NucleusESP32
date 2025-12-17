@@ -24,51 +24,167 @@ env:
   CONAN_USER_HOME: ${{ github.workspace }}/.conan-cache
 
 jobs:
-  # Quality checks using reusable workflow
+  # Quality checks
   quality:
-    uses: ./.github/workflows/reusable-quality.yml
-    with:
-      python-version: '3.12'
-      bootstrap-script: 'python scripts/bootstrap.py'
-      run-static-analysis: true
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Bootstrap development environment
+      run: python scripts/bootstrap.py
+
+    - name: Run pre-commit hooks
+      run: |
+        pre-commit run --all-files --show-diff-on-failure
+
+    - name: Run static analysis
+      run: |
+        python -m mypy src/ test_harness/ scripts/ --ignore-missing-imports
+        python -m flake8 src/ test_harness/ scripts/
+        python -m black --check --diff src/ test_harness/ scripts/
 
   # Unit and integration testing
   test:
-    uses: ./.github/workflows/reusable-testing.yml
+    name: Test Suite (${{ matrix.test-suite }})
+    runs-on: ubuntu-latest
     needs: quality
     strategy:
       matrix:
         test-suite: [unit, integration]
-    with:
-      python-version: '3.12'
-      bootstrap-script: 'python scripts/bootstrap.py'
-      test-suite: ${{ matrix.test-suite }}
-      enable-coverage: true
-      run-hardware-simulation: true
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Bootstrap development environment
+      run: python scripts/bootstrap.py
+
+    - name: Run unit tests
+      if: matrix.test-suite == 'unit'
+      run: |
+        mkdir -p build-release
+        cd build-release
+        cmake .. -DCMAKE_BUILD_TYPE=Debug
+        make -j$(nproc)
+        ctest --output-on-failure --output-junit ../test-results/unit_tests.xml
+
+    - name: Run integration tests
+      if: matrix.test-suite == 'integration'
+      run: |
+        python scripts/test_runner.py --integration-only --report-dir ./test-results
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.test-suite }}
+        path: test-results/
+        retention-days: 7
 
   # ESP32 firmware builds
   build-esp32:
-    uses: ./.github/workflows/reusable-build.yml
+    name: Build ESP32 Firmware
+    runs-on: ubuntu-latest
     needs: quality
-    with:
-      esp32-boards: ${{ inputs.run_full_matrix && '["esp32dev", "esp32-2432S028R", "esp32-8048S043C"]' || '["esp32dev"]' }}
-      python-version: '3.12'
-      bootstrap-script: 'python scripts/bootstrap.py'
-      enable-caching: true
+    strategy:
+      matrix:
+        board: ${{ fromJson(inputs.run_full_matrix && '["esp32dev", "esp32-s3-devkitc-1", "esp32-c3-devkitc-02"]' || '["esp32dev"]') }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Bootstrap development environment
+      run: python scripts/bootstrap.py
+
+    - name: Install ESP32 PlatformIO platform
+      run: |
+        pio platform install espressif32 --with-package framework-arduinoespressif32
+
+    - name: Build ESP32 firmware (${{ matrix.board }})
+      run: |
+        pio run -e ${{ matrix.board }}
+
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: esp32-firmware-${{ matrix.board }}
+        path: |
+          .pio/build/${{ matrix.board }}/firmware.bin
+          .pio/build/${{ matrix.board }}/partitions.bin
+          .pio/build/${{ matrix.board }}/bootloader.bin
+        retention-days: 30
 
   # Security scanning
   security:
-    uses: ./.github/workflows/reusable-security.yml
+    name: Security Scanning
+    runs-on: ubuntu-latest
     needs: quality
     if: inputs.skip_security != true
-    with:
-      python-version: '3.12'
-      scan-type: 'full'
-      generate-sbom: true
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Bootstrap development environment
+      run: python scripts/bootstrap.py
+
+    - name: Install security tools
+      run: |
+        pip install cyclonedx-bom
+
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'HIGH,CRITICAL'
+
+    - name: Generate SBOM
+      run: |
+        cyclonedx-bom -o sbom.json -j -t poetry .
+
+    - name: Upload security scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: trivy-results.sarif
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-sbom
+        path: sbom.json
+        retention-days: 90
 
   # Integration testing (full suite on main branch)
   integration-full:
-    uses: ./.github/workflows/reusable-testing.yml
+    uses: ./.sparetools/.github/workflows/reusable/esp32-testing.yml
     needs: [test, build-esp32]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     with:

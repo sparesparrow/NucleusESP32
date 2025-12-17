@@ -43,13 +43,12 @@ class Bootstrapper:
         self.project_type = "embedded/esp32"
         self.project_name = "nucleus-esp32"
 
-        # SpareTools configuration - layered architecture
-        self.sparetools_url = "https://github.com/sparesparrow/SpareTools.git"
-        self.sparetools_dir = self.project_root / ".sparetools"
+        # SpareTools configuration - package-based architecture
+        # No longer using submodule - packages come from remote repository
+        self.sparetools_available = False
 
         # Hermetic environment paths
         self.venv_dir = self.project_root / ".venv"
-        self.sparetools_python = None  # Will be set after SpareTools setup
 
     def run_command(self, cmd: list, cwd: Optional[Path] = None,
                    check: bool = True, capture_output: bool = False) -> subprocess.CompletedProcess:
@@ -141,107 +140,54 @@ class Bootstrapper:
         return True
 
     def setup_sparetools(self) -> bool:
-        """Set up SpareTools layered architecture following project patterns."""
-        print("\n🔧 Setting up SpareTools layered architecture...")
+        """Set up SpareTools package-based architecture."""
+        print("\n🔧 Setting up SpareTools package-based architecture...")
 
-        # Check if SpareTools is already available
-        if self.sparetools_dir.exists():
-            print(f"   SpareTools directory already exists at {self.sparetools_dir}")
-            print("   Updating SpareTools...")
-            try:
-                self.run_command(["git", "pull"], cwd=self.sparetools_dir)
-                print("✅ SpareTools updated")
-            except subprocess.CalledProcessError:
-                print("⚠️  Could not update SpareTools, proceeding with existing version")
-        else:
-            print(f"   Cloning SpareTools to {self.sparetools_dir}")
-            try:
-                self.run_command(["git", "clone", self.sparetools_url, str(self.sparetools_dir)])
-                print("✅ SpareTools cloned")
-            except subprocess.CalledProcessError:
-                print("❌ Failed to clone SpareTools")
-                return False
-
-        # Run SpareTools bootstrap with project type (optional for now)
-        bootstrap_candidates = [
-            self.sparetools_dir / "scripts" / "bootstrap.py",
-            self.sparetools_dir / "bootstrap.py",
-            self.sparetools_dir / "bootstrap-obd.py",  # Alternative name
-        ]
-
-        bootstrap_script = None
-        for candidate in bootstrap_candidates:
-            if candidate.exists():
-                bootstrap_script = candidate
-                break
-
-        if bootstrap_script:
-            print(f"   Running SpareTools bootstrap for {self.project_type}...")
-            try:
-                # Pass project type for proper tool configuration
-                env = os.environ.copy()
-                env["SPARETOOLS_PROJECT_TYPE"] = self.project_type
-                env["SPARETOOLS_PROJECT_NAME"] = self.project_name
-
-                result = self.run_command([sys.executable, str(bootstrap_script)],
-                                        capture_output=False, check=False)
-                if result.returncode != 0:
-                    print("⚠️  SpareTools bootstrap had warnings, but continuing...")
-                else:
-                    print("✅ SpareTools bootstrap completed")
-            except subprocess.CalledProcessError:
-                print("⚠️  SpareTools bootstrap failed, continuing without it...")
-        else:
-            print("⚠️  SpareTools bootstrap script not found, continuing without SpareTools setup...")
-
-        # Detect SpareTools Python for hermetic environment
-        self._detect_sparetools_python()
-
-        return True
-
-    def _detect_sparetools_python(self) -> None:
-        """Detect the SpareTools bundled Python for hermetic environment."""
-        print("   Detecting SpareTools Python...")
-
-        # Check for SpareTools Python in common locations
-        candidates = [
-            self.sparetools_dir / "python" / "python.exe",  # Windows
-            self.sparetools_dir / "python" / "python",      # Unix
-            self.sparetools_dir / "bin" / "python",         # Alternative
-        ]
-
-        for candidate in candidates:
-            if candidate.exists():
-                self.sparetools_python = candidate
-                print(f"✅ SpareTools Python detected: {candidate}")
-                return
-
-        # Try to find via environment or PATH
         try:
-            result = self.run_command(["which", "sparetools-python"],
-                                    capture_output=True, check=False)
+            # Check if SpareTools packages are available via Conan
+            result = self.run_command(["conan", "search", "sparetools-base/2.0.0"], capture_output=True)
             if result.returncode == 0:
-                self.sparetools_python = Path(result.stdout.strip())
-                print(f"✅ SpareTools Python detected: {self.sparetools_python}")
-                return
-        except:
-            pass
+                print("✅ SpareTools packages available via Conan")
+                self.sparetools_available = True
 
-        print("⚠️  SpareTools Python not found, will use system Python")
-        self.sparetools_python = Path(sys.executable)
+                # Try to run SpareTools bootstrap command if available
+                try:
+                    result = self.run_command(["sparetools-cli", "bootstrap", "esp32", "--dry-run"], capture_output=True)
+                    if result.returncode == 0:
+                        print("✅ SpareTools CLI available")
+                        # Run actual bootstrap
+                        self.run_command(["sparetools-cli", "bootstrap", "esp32"])
+                        print("✅ SpareTools bootstrap completed")
+                    else:
+                        print("⚠️  SpareTools CLI not available, using manual setup")
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    print("⚠️  SpareTools CLI not found, using manual setup")
+            else:
+                print("⚠️  SpareTools packages not found in configured Conan remotes")
+                print("   Some advanced features may not be available")
+                self.sparetools_available = False
+
+            return True
+
+        except Exception as e:
+            print(f"❌ SpareTools package setup failed: {e}")
+            print("   Continuing with manual setup (limited functionality)")
+            self.sparetools_available = False
+            return True
 
     def create_virtual_environment(self) -> bool:
-        """Create virtual environment using SpareTools bundled Python."""
-        print("\n🏗️  Creating hermetic virtual environment...")
+        """Create virtual environment using system Python."""
+        print("\n🏗️  Creating virtual environment...")
 
         if self.venv_dir.exists():
             print(f"   Removing existing virtual environment at {self.venv_dir}")
             if not self.dry_run:
                 shutil.rmtree(self.venv_dir)
 
-        print(f"   Creating virtual environment with {self.sparetools_python}")
+        python_cmd = sys.executable
+        print(f"   Creating virtual environment with {python_cmd}")
         try:
-            self.run_command([str(self.sparetools_python), "-m", "venv", str(self.venv_dir)])
+            self.run_command([python_cmd, "-m", "venv", str(self.venv_dir)])
             print("✅ Virtual environment created")
         except subprocess.CalledProcessError:
             print("❌ Failed to create virtual environment")
@@ -273,9 +219,9 @@ class Bootstrapper:
                 pip_cmd = [str(self.venv_dir / "Scripts" / "pip.exe"), "--python", python_cmd]
             print("   Using virtual environment Python")
         else:
-            python_cmd = str(self.sparetools_python or sys.executable)
+            python_cmd = str(sys.executable)
             pip_cmd = [python_cmd, "-m", "pip"]
-            print("   Using SpareTools/system Python")
+            print("   Using system Python")
 
         # Install Python dependencies
         requirements_file = self.project_root / "requirements-dev.txt"
@@ -340,29 +286,51 @@ class Bootstrapper:
         return True
 
     def setup_platformio(self) -> bool:
-        """Set up PlatformIO for ESP32 development."""
-        print("\n🔌 Setting up PlatformIO...")
+        """Set up ESP32 development tools."""
+        print("\n🔌 Setting up ESP32 development tools...")
 
         try:
-            # Check if PlatformIO is available
-            self.run_command(["pio", "--version"], capture_output=True)
-            print("✅ PlatformIO is available")
+            # Try SpareTools CLI if available
+            if self.sparetools_available:
+                try:
+                    cmd = ["sparetools-cli", "bootstrap", "esp32"]
+                    if self.dry_run:
+                        cmd.append("--dry-run")
+                    if self.verbose:
+                        cmd.append("--verbose")
 
-            # Install ESP32 platform if not already installed
+                    self.run_command(cmd)
+                    print("✅ ESP32 tools setup completed via SpareTools CLI")
+                    return True
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    print("⚠️  SpareTools CLI not available, falling back to manual setup")
+
+            # Manual PlatformIO setup
             try:
-                self.run_command(["pio", "platform", "show", "espressif32"], capture_output=True)
-                print("✅ ESP32 platform already installed")
-            except subprocess.CalledProcessError:
-                print("   Installing ESP32 platform...")
-                self.run_command(["pio", "platform", "install", "espressif32"])
-                print("✅ ESP32 platform installed")
+                # Check if PlatformIO is available
+                self.run_command(["pio", "--version"], capture_output=True)
+                print("✅ PlatformIO is available")
 
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print("❌ PlatformIO setup failed")
-            print("   Please ensure PlatformIO is installed and available in PATH")
+                # Install ESP32 platform if not already installed
+                try:
+                    self.run_command(["pio", "platform", "show", "espressif32"], capture_output=True)
+                    print("✅ ESP32 platform already installed")
+                except subprocess.CalledProcessError:
+                    print("   Installing ESP32 platform...")
+                    self.run_command(["pio", "platform", "install", "espressif32", "--with-package", "framework-arduinoespressif32"])
+                    print("✅ ESP32 platform installed")
+
+                print("✅ ESP32 tools setup completed")
+                return True
+
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                print(f"❌ PlatformIO setup failed: {e}")
+                print("   Please install PlatformIO: pip install platformio")
+                return False
+
+        except Exception as e:
+            print(f"❌ ESP32 tools setup failed: {e}")
             return False
-
-        return True
 
     def create_env_file(self) -> bool:
         """Create comprehensive environment configuration file following SpareTools patterns."""
@@ -379,8 +347,6 @@ class Bootstrapper:
         if self.is_windows and self.venv_dir.exists():
             venv_python = str(self.venv_dir / "Scripts" / "python.exe")
 
-        sparetools_python = str(self.sparetools_python) if self.sparetools_python else ""
-
         # Build environment content
         env_vars = {
             "# NucleusESP32 Development Environment": "",
@@ -390,12 +356,10 @@ class Bootstrapper:
             "": "",
             "# Project paths": "",
             "PROJECT_ROOT": str(self.project_root),
-            "SPARETOOLS_DIR": str(self.sparetools_dir),
             "": "",
             "# Python configuration": "",
             "PYTHONPATH": f"{self.project_root}/src:{self.project_root}/test:{self.project_root}/test_harness",
             "VIRTUAL_ENV": str(self.venv_dir) if self.venv_dir.exists() else "",
-            "SPARETOOLS_PYTHON": sparetools_python,
             "": "",
             "# ESP32/Embedded configuration": "",
             "PLATFORMIO_CORE_DIR": str(self.project_root / ".platformio"),
@@ -560,7 +524,7 @@ class Bootstrapper:
 
             # Phase 3: Development tools setup
             print("\n📋 Phase 3: Development Tools")
-            if not self.setup_platformio():
+            if not self.setup_esp32_tools():
                 return 1
 
             if not self.setup_precommit_hooks():

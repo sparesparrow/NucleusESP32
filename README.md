@@ -7,6 +7,54 @@
 
 NucleusESP32 is a comprehensive multi-tool firmware for ESP32-based devices, providing Sub-GHz RF communication, NFC/RFID capabilities, IR remote control, and more. Built with modern development practices using SpareTools ecosystem.
 
+## 🔧 SpareTools Integration
+
+NucleusESP32 is a **SpareTools ESP32 Consumer** - a reference implementation demonstrating best practices for ESP32 firmware development within the SpareTools ecosystem.
+
+### What is SpareTools?
+
+[SpareTools](https://github.com/sparesparrow/sparetools) is a comprehensive development ecosystem providing:
+
+- **Hermetic Development Environments**: Consistent Python 3.12.7 environments across all projects
+- **Unified Build System**: CMake + Conan + PlatformIO integration
+- **Reusable CI/CD Workflows**: GitHub Actions workflows for quality, testing, building, and security
+- **Comprehensive Testing**: Hardware simulation, unit tests, and integration testing
+- **Package Management**: Conan-based dependency management with shared tooling via Cloudsmith
+
+### Integration Benefits
+
+- **Consistent Tooling**: Same development experience across all SpareTools projects
+- **Automated Setup**: One-command bootstrap creates complete development environment
+- **Shared Components**: Reusable test harnesses, build tools, and CI/CD workflows via packages
+- **Quality Assurance**: Automated code quality, security scanning, and testing
+- **Ecosystem Support**: Access to shared ESP32 tooling and best practices through package management
+
+### Project Structure
+
+```
+NucleusESP32/
+├── src/                   # ESP32 firmware source code
+├── include/               # C/C++ header files
+├── test/                  # Unit and integration tests
+├── test_harness/          # Hardware simulation components
+├── scripts/               # Development and build scripts
+├── .github/workflows/     # CI/CD workflows
+├── platformio.ini         # PlatformIO configuration
+├── CMakeLists.txt         # CMake build system
+├── conanfile.py           # Conan package definition (consumes SpareTools packages)
+└── pyproject.toml         # Python project configuration
+```
+
+### Package-Based Architecture
+
+NucleusESP32 consumes SpareTools components through Conan packages hosted on Cloudsmith:
+
+- `sparetools-base/2.0.0` - Foundation utilities and configuration
+- `sparetools-cpython/3.12.7` - Hermetic Python environment
+- `sparetools-bootstrap/2.0.0` - ESP32 bootstrap and setup tools
+- `sparetools-test-harness/2.0.0` - Hardware simulation and testing framework
+- `sparetools-shared-dev-tools/2.0.0` - Development tools and CLI
+
 ## 🎯 Features
 
 ### Core Functionality
