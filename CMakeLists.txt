@@ -27,7 +27,11 @@ endif()
 enable_testing()
 
 # Configure Conan integration
-include(${CMAKE_BINARY_DIR}/conan_toolchain.cmake)
+if(EXISTS ${CMAKE_BINARY_DIR}/conan/conan_toolchain.cmake)
+    include(${CMAKE_BINARY_DIR}/conan/conan_toolchain.cmake)
+elseif(EXISTS ${CMAKE_BINARY_DIR}/conan_toolchain.cmake)
+    include(${CMAKE_BINARY_DIR}/conan_toolchain.cmake)
+endif()
 
 # Configure code coverage
 option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
@@ -167,15 +171,37 @@ if(NOT ESP32_BUILD)
     )
 endif()
 
-# Unit tests
-add_executable(unit_tests
-    test/test_nfc.cpp
-    test/test_main.cpp
+# Common mocks library (following oms-dev pattern)
+add_library(common_mocks
+    src/Tests/CommonMocks/CommonMocks.cpp
 )
+target_include_directories(common_mocks PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/Tests/CommonMocks
+    ${CMAKE_SOURCE_DIR}/src/Tests
+    ${CMAKE_SOURCE_DIR}/test
+    ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(common_mocks PUBLIC GTest::gmock)
+
+# Unit tests - Following oms-dev pattern: src/Tests/NucleusUnitTests/
+set(UNIT_TEST_SOURCES
+    src/Tests/NucleusUnitTests/main.cpp
+    src/Tests/NucleusUnitTests/pch.cpp
+    src/Tests/NucleusUnitTests/NfcModuleTests.cpp
+    src/Tests/NucleusUnitTests/RfModuleTests.cpp
+    src/Tests/NucleusUnitTests/IrModuleTests.cpp
+    src/Tests/NucleusUnitTests/DataProcessingTests.cpp
+    # Legacy test file (keep for compatibility)
+    test/test_nfc.cpp
+)
+
+add_executable(unit_tests ${UNIT_TEST_SOURCES})
 
 target_link_libraries(unit_tests
     PRIVATE
     GTest::gtest_main
+    GTest::gmock
+    common_mocks
     nfc_lib
     rf_lib
     ir_lib
@@ -184,27 +210,21 @@ target_link_libraries(unit_tests
 )
 
 target_include_directories(unit_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/Tests/NucleusUnitTests
+    ${CMAKE_SOURCE_DIR}/src/Tests
     ${CMAKE_SOURCE_DIR}/test
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 # Define UNIT_TEST for test builds
 target_compile_definitions(unit_tests PRIVATE UNIT_TEST)
 
-# Integration tests (host simulation)
-add_executable(integration_tests
-    test/integration/test_hardware_integration.py  # This will be handled by pytest
-)
-# Note: Integration tests are primarily Python-based and run via pytest
+# Enable precompiled headers for unit tests (following oms-dev pattern)
+target_precompile_headers(unit_tests PRIVATE src/Tests/NucleusUnitTests/pch.h)
 
-# Mock library for testing
-add_library(mock_hardware
-    test/mock_arduino.h
-    test/mock_nfc_reader.h
-)
-target_include_directories(mock_hardware PUBLIC
-    ${CMAKE_SOURCE_DIR}/test
-)
+# Note: Integration tests are primarily Python-based and run via pytest
+# Mock headers are included via target_include_directories for testing
 
 # Test targets
 include(GoogleTest)
