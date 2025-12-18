@@ -23,10 +23,11 @@ Usage:
 
 import os
 import sys
+import time
 import argparse
 from pathlib import Path
 from typing import Optional, List, Any, Dict
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 
 @dataclass
@@ -41,6 +42,64 @@ class TestSuiteResult:
     return_code: int
     output: str
     junit_file: Optional[str] = None
+
+
+class ESP32TestRunnerAdapter:
+    """Adapter to bridge SpareTools test runner with NucleusESP32 specific needs."""
+
+    def __init__(self, sparetools_runner):
+        self.sparetools_runner = sparetools_runner
+
+    def run_command(self, cmd, cwd=None, capture_output=True, check=False):
+        """Delegate command execution to SpareTools runner."""
+        return self.sparetools_runner.run_command(cmd, cwd, capture_output, check)
+
+    def run_unit_tests(self, parallel=True, coverage=True):
+        """Run unit tests using SpareTools runner."""
+        # Adapt to SpareTools API
+        return self.sparetools_runner.run_tests(
+            test_patterns=["test_*.cpp", "test_*.c"],
+            parallel=parallel,
+            coverage=coverage,
+            junit_output=True
+        )
+
+    def run_integration_tests(self, hardware_simulation=True):
+        """Run integration tests using SpareTools runner."""
+        # Adapt to SpareTools API with ESP32-specific settings
+        return self.sparetools_runner.run_tests(
+            test_patterns=["test_*.py"],
+            parallel=False,  # Integration tests typically not parallel
+            coverage=False,
+            junit_output=True,
+            extra_env={"NUCLEUS_HARDWARE_SIMULATION": "1" if hardware_simulation else "0"}
+        )
+
+    def run_quality_checks(self):
+        """Run linting and quality checks using SpareTools runner."""
+        return self.sparetools_runner.run_quality_checks()
+
+    def run_security_scan(self):
+        """Run security scanning using SpareTools runner."""
+        return self.sparetools_runner.run_security_scan()
+
+    def run_tests(self, unit_only=False, integration_only=False, hardware_only=False,
+                  coverage=True, parallel=True, formats=None):
+        """Run all tests using SpareTools runner."""
+        if unit_only:
+            return self.run_unit_tests(parallel, coverage)
+        elif integration_only:
+            return self.run_integration_tests()
+        else:
+            # Run comprehensive test suite
+            results = []
+            if not integration_only:
+                results.append(self.run_unit_tests(parallel, coverage))
+            if not unit_only:
+                results.append(self.run_integration_tests())
+
+            # Return overall success
+            return all(r.get('return_code', 1) == 0 for r in results)
 
 
 class NucleusTestRunner:
@@ -74,11 +133,43 @@ class NucleusTestRunner:
     def _init_sparetools_runner(self):
         """Initialize SpareTools test runner if available."""
         try:
-            # Import SpareTools test runner from installed package
-            from sparetools_shared_dev_tools.test_runner import ESP32TestRunner
-            self.sparetools_runner = ESP32TestRunner(self.project_root, self.verbose)
-        except ImportError:
-            print("⚠️  SpareTools test runner not available, using fallback implementation")
+            # Import SpareTools test runner from scripts/testing/ (PR #52)
+            import sys
+            import os
+            from pathlib import Path
+
+            # Try to find SpareTools test runner in package or local scripts
+            try:
+                # First try importing from installed SpareTools package
+                from sparetools_shared_dev_tools.test_runner import ESP32TestRunner
+                self.sparetools_runner = ESP32TestRunner(self.project_root, self.verbose)
+            except ImportError:
+                # Fallback: try to import from local SpareTools scripts if available
+                sparetools_root = os.environ.get('SPARETOOLS_ROOT')
+                if sparetools_root:
+                    scripts_path = Path(sparetools_root) / 'scripts' / 'testing'
+                    if scripts_path.exists():
+                        sys.path.insert(0, str(scripts_path.parent))
+                        try:
+                            from testing.test_runner import SpareToolsTestRunner
+                            # Create adapter for ESP32-specific functionality
+                            self.sparetools_runner = ESP32TestRunnerAdapter(
+                                SpareToolsTestRunner(self.project_root, self.verbose)
+                            )
+                        except ImportError:
+                            self.sparetools_runner = None
+                    else:
+                        self.sparetools_runner = None
+                else:
+                    self.sparetools_runner = None
+
+            if self.sparetools_runner:
+                print("✅ SpareTools test runner initialized")
+            else:
+                print("⚠️  SpareTools test runner not available, using fallback implementation")
+
+        except Exception as e:
+            print(f"⚠️  Failed to initialize SpareTools test runner: {e}, using fallback implementation")
             self.sparetools_runner = None
 
     def run_command(self, cmd: List[str], cwd: Optional[Path] = None,

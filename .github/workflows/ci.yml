@@ -184,15 +184,79 @@ jobs:
 
   # Integration testing (full suite on main branch)
   integration-full:
-    uses: ./.sparetools/.github/workflows/reusable/esp32-testing.yml
+    name: Integration Test Suite (Full)
+    runs-on: ubuntu-latest
     needs: [test, build-esp32]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    with:
-      python-version: '3.12'
-      bootstrap-script: 'python scripts/bootstrap.py'
-      test-suite: 'all'
-      enable-coverage: true
-      run-hardware-simulation: true
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Cache Conan packages
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.CONAN_USER_HOME }}
+        key: ${{ runner.os }}-conan-${{ hashFiles('conanfile.py') }}
+        restore-keys: |
+          ${{ runner.os }}-conan-
+
+    - name: Bootstrap development environment
+      run: python scripts/bootstrap.py
+
+    - name: Install test dependencies
+      run: |
+        pip install -r requirements-dev.txt
+
+    - name: Build C++ tests
+      run: |
+        mkdir -p build-release
+        cd build-release
+        cmake .. -DCMAKE_BUILD_TYPE=Debug
+        make -j$(nproc)
+
+    - name: Run unit tests
+      run: |
+        cd build-release
+        ctest --output-on-failure --output-junit ../test-results/unit_tests.xml
+
+    - name: Run integration tests
+      env:
+        NUCLEUS_HARDWARE_SIMULATION: true
+        NUCLEUS_TEST_RESULTS_DIR: ${{ github.workspace }}/test-results
+        PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/test:${{ github.workspace }}/test_harness
+      run: |
+        python scripts/test_runner.py --integration-only --report-dir ./test-results
+
+    - name: Run hardware simulation tests
+      run: |
+        python test_harness/demo.py
+
+    - name: Generate coverage report
+      run: |
+        python scripts/test_runner.py --coverage --report-dir ./coverage-results
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-full
+        path: |
+          test-results/
+          coverage-results/
+        retention-days: 7
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage-results/coverage.xml
+        flags: full-suite
+        name: codecov-full
+        fail_ci_if_error: false
 
   # Performance regression testing
   performance:

@@ -150,18 +150,23 @@ class Bootstrapper:
                 print("✅ SpareTools packages available via Conan")
                 self.sparetools_available = True
 
-                # Try to run SpareTools bootstrap command if available
+                # Use SpareTools bootstrap scripts directly (PR #52)
                 try:
-                    result = self.run_command(["sparetools-cli", "bootstrap", "esp32", "--dry-run"], capture_output=True)
-                    if result.returncode == 0:
-                        print("✅ SpareTools CLI available")
-                        # Run actual bootstrap
-                        self.run_command(["sparetools-cli", "bootstrap", "esp32"])
-                        print("✅ SpareTools bootstrap completed")
+                    # Import and run SpareTools bootstrap functionality
+                    # This will use the new bootstrap scripts from SpareTools
+                    from sparetools_bootstrap.bootstrap.esp32_bootstrap import ESP32Bootstrap
+
+                    bootstrapper = ESP32Bootstrap(project_root=self.project_root)
+                    success = bootstrapper.run_bootstrap()
+
+                    if success:
+                        print("✅ SpareTools ESP32 bootstrap completed")
                     else:
-                        print("⚠️  SpareTools CLI not available, using manual setup")
-                except (subprocess.CalledProcessError, FileNotFoundError):
-                    print("⚠️  SpareTools CLI not found, using manual setup")
+                        print("⚠️  SpareTools bootstrap had issues, continuing with manual setup")
+                except ImportError:
+                    print("⚠️  SpareTools bootstrap module not available, using manual setup")
+                except Exception as e:
+                    print(f"⚠️  SpareTools bootstrap failed: {e}, using manual setup")
             else:
                 print("⚠️  SpareTools packages not found in configured Conan remotes")
                 print("   Some advanced features may not be available")
@@ -290,20 +295,24 @@ class Bootstrapper:
         print("\n🔌 Setting up ESP32 development tools...")
 
         try:
-            # Try SpareTools CLI if available
+            # Try SpareTools bootstrap if available (PR #52)
             if self.sparetools_available:
                 try:
-                    cmd = ["sparetools-cli", "bootstrap", "esp32"]
-                    if self.dry_run:
-                        cmd.append("--dry-run")
-                    if self.verbose:
-                        cmd.append("--verbose")
+                    # Use SpareTools ESP32 bootstrap functionality
+                    from sparetools_bootstrap.bootstrap.esp32_config import ESP32Config
 
-                    self.run_command(cmd)
-                    print("✅ ESP32 tools setup completed via SpareTools CLI")
-                    return True
-                except (subprocess.CalledProcessError, FileNotFoundError):
-                    print("⚠️  SpareTools CLI not available, falling back to manual setup")
+                    config = ESP32Config(project_root=self.project_root)
+                    success = config.setup_platformio()
+
+                    if success:
+                        print("✅ ESP32 tools setup completed via SpareTools")
+                        return True
+                    else:
+                        print("⚠️  SpareTools ESP32 setup had issues, falling back to manual setup")
+                except ImportError:
+                    print("⚠️  SpareTools ESP32 config not available, falling back to manual setup")
+                except Exception as e:
+                    print(f"⚠️  SpareTools ESP32 setup failed: {e}, falling back to manual setup")
 
             # Manual PlatformIO setup
             try:
