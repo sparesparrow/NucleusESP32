@@ -127,6 +127,18 @@ class NucleusTestRunner:
         self.verbose = verbose
         self.sparetools_runner = None
 
+        # Set up result directories
+        self.results_dir = self.project_root / "test-results"
+        self.coverage_dir = self.project_root / "coverage-results"
+        self.junit_dir = self.results_dir
+
+        # Test results tracking
+        self.test_results = []
+
+        # Ensure directories exist
+        self.results_dir.mkdir(exist_ok=True)
+        self.coverage_dir.mkdir(exist_ok=True)
+
         # Try to import and initialize SpareTools test runner
         self._init_sparetools_runner()
 
@@ -173,27 +185,34 @@ class NucleusTestRunner:
             self.sparetools_runner = None
 
     def run_command(self, cmd: List[str], cwd: Optional[Path] = None,
-                   capture_output: bool = True, check: bool = False):
+                   capture_output: bool = True, check: bool = False, env: Optional[dict] = None):
         """
         Run a command and return results.
 
         Delegates to SpareTools if available, otherwise provides fallback.
         """
         if self.sparetools_runner:
-            return self.sparetools_runner.run_command(cmd, cwd, capture_output, check)
+            return self.sparetools_runner.run_command(cmd, cwd, capture_output, check, env)
         else:
             # Fallback implementation
             import subprocess
+            import os
             if self.verbose:
                 print(f"[EXEC] {' '.join(cmd)}")
 
             try:
+                # Merge environment variables if provided
+                run_env = os.environ.copy()
+                if env:
+                    run_env.update(env)
+
                 result = subprocess.run(
                     cmd,
                     cwd=cwd or self.project_root,
                     capture_output=capture_output,
                     text=True,
-                    check=check
+                    check=check,
+                    env=run_env
                 )
                 return result.returncode, result.stdout, result.stderr
             except subprocess.CalledProcessError as e:
