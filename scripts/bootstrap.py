@@ -180,8 +180,44 @@ class Bootstrapper:
             self.sparetools_available = False
             return True
 
+    def get_bundled_python_path(self) -> Optional[str]:
+        """Get path to bundled SpareTools CPython executable."""
+        print("   Locating bundled SpareTools CPython...")
+
+        try:
+            # First try to get Python path from Conan conf
+            result = self.run_command(["conan", "conf", "get", "user.cpython:executable"],
+                                     capture_output=True, check=False)
+            if result.returncode == 0 and result.stdout.strip():
+                python_path = result.stdout.strip()
+                if os.path.exists(python_path):
+                    print(f"   Found bundled Python via Conan conf: {python_path}")
+                    return python_path
+
+            # Fallback: look in .conan directory structure
+            conan_dir = self.project_root / ".conan"
+            if conan_dir.exists():
+                # Common locations for sparetools-cpython
+                candidates = [
+                    conan_dir / "sparetools-cpython" / "3.12.7" / "bin" / "python3",
+                    conan_dir / "sparetools-cpython" / "3.12.7" / "bin" / "python",
+                    conan_dir / "sparetools-cpython" / "3.12.7" / "Scripts" / "python.exe",  # Windows
+                ]
+
+                for candidate in candidates:
+                    if candidate.exists():
+                        print(f"   Found bundled Python at: {candidate}")
+                        return str(candidate)
+
+            print("   ⚠️  Bundled Python not found, will use system Python")
+            return None
+
+        except Exception as e:
+            print(f"   ⚠️  Error locating bundled Python: {e}")
+            return None
+
     def create_virtual_environment(self) -> bool:
-        """Create virtual environment using system Python."""
+        """Create virtual environment using bundled SpareTools CPython."""
         print("\n🏗️  Creating virtual environment...")
 
         if self.venv_dir.exists():
@@ -189,8 +225,15 @@ class Bootstrapper:
             if not self.dry_run:
                 shutil.rmtree(self.venv_dir)
 
-        python_cmd = sys.executable
-        print(f"   Creating virtual environment with {python_cmd}")
+        # Try to use bundled CPython first
+        bundled_python = self.get_bundled_python_path()
+        if bundled_python:
+            python_cmd = bundled_python
+            print(f"   ✅ Using bundled SpareTools CPython: {python_cmd}")
+        else:
+            python_cmd = sys.executable
+            print(f"   ⚠️  Using system Python (bundled not available): {python_cmd}")
+
         try:
             self.run_command([python_cmd, "-m", "venv", str(self.venv_dir)])
             print("✅ Virtual environment created")
@@ -212,21 +255,24 @@ class Bootstrapper:
         return True
 
     def install_dependencies(self) -> bool:
-        """Install project dependencies using virtual environment and Conan."""
+        """Install project dependencies using bundled CPython and Conan."""
         print("\n📦 Installing dependencies...")
 
-        # Determine which Python/pip to use
-        if self.venv_dir.exists():
-            python_cmd = str(self.venv_dir / "bin" / "python")
-            pip_cmd = [python_cmd, "-m", "pip"]
-            if self.is_windows:
-                python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
-                pip_cmd = [str(self.venv_dir / "Scripts" / "pip.exe"), "--python", python_cmd]
-            print("   Using virtual environment Python")
+        # CRITICAL: Install Conan dependencies FIRST to make bundled CPython available
+        conanfile = self.project_root / "conanfile.py"
+        if conanfile.exists():
+            print("   Installing Conan dependencies (includes bundled CPython)...")
+            try:
+                self.run_command(["conan", "install", ".", "--build=missing"])
+                print("✅ Conan dependencies installed (bundled CPython now available)")
+            except subprocess.CalledProcessError:
+                print("❌ Failed to install Conan dependencies")
+                return False
         else:
-            python_cmd = str(sys.executable)
-            pip_cmd = [python_cmd, "-m", "pip"]
-            print("   Using system Python")
+            print("⚠️  conanfile.py not found, skipping Conan dependencies")
+
+        # Now determine which Python/pip to use (prioritize bundled CPython)
+        python_cmd, pip_cmd = self._get_python_commands()
 
         # Install Python dependencies
         requirements_file = self.project_root / "requirements-dev.txt"
@@ -241,29 +287,38 @@ class Bootstrapper:
         else:
             print("⚠️  requirements-dev.txt not found, skipping Python dependencies")
 
-        # Install Conan dependencies
-        conanfile = self.project_root / "conanfile.py"
-        if conanfile.exists():
-            print("   Installing Conan dependencies...")
-            try:
-                self.run_command(["conan", "install", ".", "--build=missing"])
-                print("✅ Conan dependencies installed")
-            except subprocess.CalledProcessError:
-                print("❌ Failed to install Conan dependencies")
-                return False
-        else:
-            print("⚠️  conanfile.py not found, skipping Conan dependencies")
-
         return True
+
+    def _get_python_commands(self) -> tuple[str, list[str]]:
+        """Get Python and pip commands, prioritizing bundled CPython."""
+        # Try bundled CPython from virtual environment first
+        if self.venv_dir.exists():
+            python_cmd = str(self.venv_dir / "bin" / "python")
+            pip_cmd = [python_cmd, "-m", "pip"]
+            if self.is_windows:
+                python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
+                pip_cmd = [str(self.venv_dir / "Scripts" / "pip.exe"), "--python", python_cmd]
+            print("   Using virtual environment Python (bundled CPython)")
+            return python_cmd, pip_cmd
+
+        # Fallback: try to find bundled CPython directly
+        bundled_python = self.get_bundled_python_path()
+        if bundled_python:
+            print(f"   Using bundled SpareTools CPython: {bundled_python}")
+            return bundled_python, [bundled_python, "-m", "pip"]
+
+        # Final fallback: system Python
+        python_cmd = str(sys.executable)
+        pip_cmd = [python_cmd, "-m", "pip"]
+        print("   Using system Python (bundled not available)")
+        return python_cmd, pip_cmd
 
     def setup_precommit_hooks(self) -> bool:
         """Set up pre-commit hooks and development tools following SpareTools patterns."""
         print("\n🔗 Setting up development tools and pre-commit hooks...")
 
-        # Determine which Python to use for tools
-        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(sys.executable)
-        if self.is_windows and self.venv_dir.exists():
-            python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
+        # Get Python command (prioritizes bundled CPython)
+        python_cmd, _ = self._get_python_commands()
 
         # Install pre-commit if not available
         try:
@@ -351,10 +406,9 @@ class Bootstrapper:
             if not self.dry_run:
                 env_file.rename(env_file.with_suffix('.env.backup'))
 
-        # Determine Python paths
-        venv_python = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else ""
-        if self.is_windows and self.venv_dir.exists():
-            venv_python = str(self.venv_dir / "Scripts" / "python.exe")
+        # Determine Python paths (prioritize bundled CPython)
+        python_cmd, _ = self._get_python_commands()
+        venv_python = python_cmd if python_cmd != str(sys.executable) else ""
 
         # Build environment content
         env_vars = {
@@ -411,10 +465,8 @@ class Bootstrapper:
         checks_passed = 0
         total_checks = 0
 
-        # Determine which Python to use for checks
-        python_cmd = str(self.venv_dir / "bin" / "python") if self.venv_dir.exists() else str(sys.executable)
-        if self.is_windows and self.venv_dir.exists():
-            python_cmd = str(self.venv_dir / "Scripts" / "python.exe")
+        # Get Python command for checks (prioritizes bundled CPython)
+        python_cmd, _ = self._get_python_commands()
 
         # Check Python version (should be 3.12+ from SpareTools)
         total_checks += 1

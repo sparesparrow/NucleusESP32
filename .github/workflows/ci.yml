@@ -34,13 +34,27 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-
-    - name: Bootstrap development environment
+    - name: Bootstrap development environment (includes bundled CPython)
       run: python scripts/bootstrap.py
+
+    - name: Set up Python path (use bundled CPython)
+      run: |
+        # Add bundled Python to PATH if available
+        if [ -f ".venv/bin/python" ]; then
+          echo ".venv/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from virtual environment"
+        elif [ -f ".conan/sparetools-cpython/3.12.7/bin/python3" ]; then
+          echo ".conan/sparetools-cpython/3.12.7/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from Conan"
+        else
+          echo "Bundled CPython not found, using system Python"
+        fi
+
+    - name: Verify bundled Python usage
+      run: |
+        echo "Python version: $(python --version)"
+        echo "Python executable: $(which python)"
+        python -c "import sys; print(f'Python path: {sys.executable}')" 
 
     - name: Run pre-commit hooks
       run: |
@@ -64,13 +78,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-
-    - name: Bootstrap development environment
+    - name: Bootstrap development environment (includes bundled CPython)
       run: python scripts/bootstrap.py
+
+    - name: Set up Python path (use bundled CPython)
+      run: |
+        # Add bundled Python to PATH if available
+        if [ -f ".venv/bin/python" ]; then
+          echo ".venv/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from virtual environment"
+        elif [ -f ".conan/sparetools-cpython/3.12.7/bin/python3" ]; then
+          echo ".conan/sparetools-cpython/3.12.7/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from Conan"
+        else
+          echo "Bundled CPython not found, using system Python"
+        fi
+
+    - name: Verify bundled Python usage
+      run: |
+        echo "Python version: $(python --version)"
+        echo "Python executable: $(which python)"
+        python -c "import sys; print(f'Python path: {sys.executable}')" 
 
     - name: Run unit tests
       if: matrix.test-suite == 'unit'
@@ -106,13 +134,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-
-    - name: Bootstrap development environment
+    - name: Bootstrap development environment (includes bundled CPython)
       run: python scripts/bootstrap.py
+
+    - name: Set up Python path (use bundled CPython)
+      run: |
+        # Add bundled Python to PATH if available
+        if [ -f ".venv/bin/python" ]; then
+          echo ".venv/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from virtual environment"
+        elif [ -f ".conan/sparetools-cpython/3.12.7/bin/python3" ]; then
+          echo ".conan/sparetools-cpython/3.12.7/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from Conan"
+        else
+          echo "Bundled CPython not found, using system Python"
+        fi
+
+    - name: Verify bundled Python usage
+      run: |
+        echo "Python version: $(python --version)"
+        echo "Python executable: $(which python)"
+        python -c "import sys; print(f'Python path: {sys.executable}')" 
 
     - name: Install ESP32 PlatformIO platform
       run: |
@@ -144,13 +186,27 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-
-    - name: Bootstrap development environment
+    - name: Bootstrap development environment (includes bundled CPython)
       run: python scripts/bootstrap.py
+
+    - name: Set up Python path (use bundled CPython)
+      run: |
+        # Add bundled Python to PATH if available
+        if [ -f ".venv/bin/python" ]; then
+          echo ".venv/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from virtual environment"
+        elif [ -f ".conan/sparetools-cpython/3.12.7/bin/python3" ]; then
+          echo ".conan/sparetools-cpython/3.12.7/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from Conan"
+        else
+          echo "Bundled CPython not found, using system Python"
+        fi
+
+    - name: Verify bundled Python usage
+      run: |
+        echo "Python version: $(python --version)"
+        echo "Python executable: $(which python)"
+        python -c "import sys; print(f'Python path: {sys.executable}')" 
 
     - name: Install security tools
       run: |
@@ -267,13 +323,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-
-    - name: Bootstrap development environment
+    - name: Bootstrap development environment (includes bundled CPython)
       run: python scripts/bootstrap.py
+
+    - name: Set up Python path (use bundled CPython)
+      run: |
+        # Add bundled Python to PATH if available
+        if [ -f ".venv/bin/python" ]; then
+          echo ".venv/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from virtual environment"
+        elif [ -f ".conan/sparetools-cpython/3.12.7/bin/python3" ]; then
+          echo ".conan/sparetools-cpython/3.12.7/bin" >> $GITHUB_PATH
+          echo "Using bundled CPython from Conan"
+        else
+          echo "Bundled CPython not found, using system Python"
+        fi
+
+    - name: Verify bundled Python usage
+      run: |
+        echo "Python version: $(python --version)"
+        echo "Python executable: $(which python)"
+        python -c "import sys; print(f'Python path: {sys.executable}')" 
 
     - name: Run performance benchmarks
       run: |
