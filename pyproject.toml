@@ -1,3 +1,7 @@
+# NucleusESP32 pyproject.toml
+# Configured for bundled SpareTools CPython 3.12.7 environment
+# All tool versions and Python requirements align with hermetic environment
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -8,7 +12,8 @@ version = "0.1.0"
 description = "ESP32-based multi-tool device firmware"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.8"
+# Requires Python 3.12+ (bundled SpareTools CPython 3.12.7)
+requires-python = ">=3.12"
 authors = [
     {name = "NucleusESP32 Team", email = "team@nucleus-esp32.local"},
 ]
@@ -25,10 +30,6 @@ classifiers = [
     "Operating System :: MacOS",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Embedded Systems",
     "Topic :: System :: Hardware",
@@ -40,6 +41,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Development dependencies - versions tested with bundled CPython 3.12.7
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -96,7 +98,7 @@ nucleus = [
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+target-version = ['py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -142,7 +144,7 @@ exclude = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -226,7 +228,7 @@ update_changelog_on_bump = true
 
 [tool.pre-commit]
 repos = [
-    {repo = "https://github.com/pre-commit/pre-commit-hooks", rev = "v4.4.0", hooks = [
+    {repo = "https://github.com/pre-commit/pre-commit-hooks", rev = "v4.5.0", hooks = [
         {id = "trailing-whitespace"},
         {id = "end-of-file-fixer"},
         {id = "check-yaml"},
@@ -235,16 +237,16 @@ repos = [
         {id = "debug-statements"},
         {id = "check-docstring-first"},
     ]},
-    {repo = "https://github.com/psf/black", rev = "23.7.0", hooks = [
+    {repo = "https://github.com/psf/black", rev = "24.1.0", hooks = [
         {id = "black"},
     ]},
-    {repo = "https://github.com/pycqa/isort", rev = "5.12.0", hooks = [
+    {repo = "https://github.com/pycqa/isort", rev = "5.13.0", hooks = [
         {id = "isort"},
     ]},
-    {repo = "https://github.com/pycqa/flake8", rev = "6.0.0", hooks = [
+    {repo = "https://github.com/pycqa/flake8", rev = "7.0.0", hooks = [
         {id = "flake8"},
     ]},
-    {repo = "https://github.com/pre-commit/mirrors-mypy", rev = "v1.5.1", hooks = [
+    {repo = "https://github.com/pre-commit/mirrors-mypy", rev = "v1.8.0", hooks = [
         {id = "mypy"},
     ]},
 ]
