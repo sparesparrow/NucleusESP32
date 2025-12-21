@@ -59,11 +59,11 @@ def layout(self):
         # FlatBuffers for message protocol serialization (external dependency for now)
         self.requires("flatbuffers/23.5.26")
 
-        # SpareTools HAL for Sunton ESP32 boards (when available)
-        # self.requires(f"sparetools-hal-sunton/{versions['hal-sunton']}")
+        # SpareTools HAL for Sunton ESP32 boards
+        self.requires(f"sparetools-hal-sunton/{versions['hal-sunton']}")
 
-        # SpareTools crypto suite for security features (when available)
-        # self.requires(f"sparetools-crypto-suite/{versions['crypto-suite']}")
+        # SpareTools crypto suite for security features
+        self.requires(f"sparetools-crypto-suite/{versions['crypto-suite']}")
 
     def generate(self):
         # Generate CMake toolchain and dependencies for host testing
