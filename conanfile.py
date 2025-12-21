@@ -13,7 +13,7 @@ class NucleusESP32Conan(ConanFile):
     package_type = "application"
 
 # Foundation layer - SpareTools base provides common utilities and configuration
-python_requires = "sparetools-base/2.0.0"
+python_requires = "sparetools-base/2.0.3"
 
 # Optional metadata
 license = "MIT"
@@ -31,24 +31,39 @@ exports_sources = "CMakeLists.txt", "src/*", "include/*", "test/*", "test_harnes
 def layout(self):
     basic_layout(self, src_folder=".")
 
-def build_requirements(self):
-    # Tools layer - SpareTools CPython provides hermetic Python environment
-    # Enable SpareTools CPython for bundled Python environment
-    self.tool_requires("sparetools-cpython/3.12.7")
+    def build_requirements(self):
+        # Use SpareTools BOM for version management
+        versions = self.python_requires["sparetools-base"].module.SpareToolsVersions.versions
 
-    # Test harness for Python integration tests (ngapy-style)
-    # Enable test harness when available from SpareTools
-    self.tool_requires("sparetools-test-harness/2.0.0")
+        # Tools layer - SpareTools CPython provides hermetic Python environment
+        # Enable SpareTools CPython for bundled Python environment
+        self.tool_requires(f"sparetools-cpython/{versions['cpython']}")
 
-    # Shared development tools - enable for development environment
-    self.tool_requires("sparetools-shared-dev-tools/2.0.0")
+        # Test harness for Python integration tests (ngapy-style)
+        # Enable test harness when available from SpareTools
+        self.tool_requires(f"sparetools-test-harness/{versions['test-harness']}")
 
-    # ESP32-specific bootstrap tools
-    self.tool_requires("sparetools-bootstrap/2.0.0")
+        # Shared development tools - enable for development environment
+        self.tool_requires(f"sparetools-shared-dev-tools/{versions['shared-dev-tools']}")
+
+        # ESP32-specific bootstrap tools
+        self.tool_requires(f"sparetools-bootstrap/{versions['bootstrap']}")
 
     def requirements(self):
+        # Use SpareTools BOM for version management
+        versions = self.python_requires["sparetools-base"].module.SpareToolsVersions.versions
+
         # Testing framework for host-based C++ unit tests
-        self.requires("gtest/1.14.0")
+        self.requires(f"gtest/{versions['gtest']}")
+
+        # FlatBuffers for message protocol serialization (external dependency for now)
+        self.requires("flatbuffers/23.5.26")
+
+        # SpareTools HAL for Sunton ESP32 boards (when available)
+        # self.requires(f"sparetools-hal-sunton/{versions['hal-sunton']}")
+
+        # SpareTools crypto suite for security features (when available)
+        # self.requires(f"sparetools-crypto-suite/{versions['crypto-suite']}")
 
     def generate(self):
         # Generate CMake toolchain and dependencies for host testing

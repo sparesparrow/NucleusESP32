@@ -263,7 +263,8 @@ class Bootstrapper:
         if conanfile.exists():
             print("   Installing Conan dependencies (includes bundled CPython)...")
             try:
-                self.run_command(["conan", "install", ".", "--build=missing"])
+                # Use esp32_security profile for hardened builds
+                self.run_command(["conan", "install", ".", "--build=missing", "--profile:host=esp32_security", "--profile:build=default"])
                 print("✅ Conan dependencies installed (bundled CPython now available)")
             except subprocess.CalledProcessError:
                 print("❌ Failed to install Conan dependencies")

@@ -1,7 +1,6 @@
 #include <Arduino.h>
-#include <XPT2046_Bitbang.h>
 #include "GUI/ScreenManager.h"
-#include "esp32_smartdisplay/src/esp32_smartdisplay.h"
+#include <SpareTools/HAL/Sunton/Display.h>
 #include "GUI/events.h"
 #include "modules/RF/CC1101.h"
 #include "modules/ETC/SDcard.h"
@@ -31,7 +30,7 @@ RCSwitch mySwitch1;
 
 SDcard& SD_CARD = SDcard::getInstance();
 
-XPT2046_Bitbang touchscreen(MOSI_PIN, MISO_PIN, CLK_PIN, CS_PIN);
+// Touchscreen is now handled by SpareTools HAL
 ScreenManager& screenMgrM = ScreenManager::getInstance();
 static lv_indev_t *indev = nullptr;
 TouchCallback _singleTouchCallback;
@@ -56,8 +55,8 @@ void init_touch(TouchCallback singleTouchCallback);
 
  void init_touch(TouchCallback singleTouchCallback) {
      Serial.println(F("Initializing touch."));
-     touchscreen.begin(); 
-     _singleTouchCallback = singleTouchCallback; 
+     // Touch initialization is now handled by SpareTools HAL
+     _singleTouchCallback = singleTouchCallback;
      Serial.println(F("Touch initialized."));
  }
 
@@ -65,15 +64,10 @@ void setup() {
 
   Serial.begin(115200);
   init_touch([]() { Serial.println(F("Single touch detected!")); });
-  smartdisplay_init();
+  SpareTools::HAL::Sunton::initDefault();
   auto disp = lv_disp_get_default();
 
-  #ifdef CYDV2
-    touchscreen.setCalibration(153, 123, 1915, 1824);
-  #endif
-  #ifdef CYDV3
-    touchscreen.setCalibration(180, 197, 1807, 1848);
-  #endif
+  // Touchscreen calibration is now handled by SpareTools HAL
     screenMgrM.draw_image();
     lv_task_handler();
     delay(3000);
@@ -229,21 +223,19 @@ void setup() {
 }
  
  bool touched() {
-Point touch = touchscreen.getTouch();
-
-  if (touch.x > 0 && touch.x < 320 && touch.y > 0 && touch.y < 320) {
+    // Use SpareTools HAL for touch detection
+    auto touch = SpareTools::HAL::Sunton::Display::getTouch();
+    if (touch.x > 0 && touch.x < 320 && touch.y > 0 && touch.y < 320) {
         return true;
-
     } else {
         return false;
     }
-
 }
  
  
  void my_touchpad_read(lv_indev_t * indev_driver, lv_indev_data_t * data) {
     if (touched()) {
-        Point touch = touchscreen.getTouch();
+        auto touch = SpareTools::HAL::Sunton::Display::getTouch();
         int16_t x = touch.x;
         int16_t y = touch.y;
 
