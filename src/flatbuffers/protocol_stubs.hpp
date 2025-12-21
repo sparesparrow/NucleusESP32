@@ -44,13 +44,6 @@ enum class ModuleType : uint8_t {
     // Add more as needed
 };
 
-enum class ModuleType : uint8_t {
-    SYSTEM = 0,
-    HARDWARE = 1,
-    NETWORK = 2,
-    // Add more as needed
-};
-
 // Stub classes with minimal required methods
 class Command {
 public:

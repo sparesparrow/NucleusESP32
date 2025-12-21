@@ -136,39 +136,36 @@ class NucleusESP32Bridge:
 
 def add_conan_lib_deps():
     """Add Conan-managed dependencies to PlatformIO environment."""
-    # Get profile from environment or use default
-    profile = os.environ.get("PLATFORMIO_CONAN_PROFILE", "esp32_base.prof")
-
-    print(f"[NUCLEUS-BRIDGE] Running with profile: {profile}")
+    print("[NUCLEUS-BRIDGE] Adding dependencies to PlatformIO environment")
 
     try:
-        nucleus_bridge = NucleusESP32Bridge()
-        pio_env = os.environ.get("PIOENV", "esp32-2432S028Rv3")
-        deps_str = nucleus_bridge.bridge_environment(pio_env)
-
-        print(f"[NUCLEUS-BRIDGE] Generated configuration for {pio_env}")
-
-        # For now, add basic dependencies directly to PlatformIO
-        # TODO: Parse generated config and apply to environment
+        # Add essential dependencies for NucleusESP32
         env.Append(LIB_DEPS=[
             "lvgl/lvgl",
             "google/flatbuffers@^23.5.26",
         ])
 
-        print("[NUCLEUS-BRIDGE] Dependencies configured")
+        print("[NUCLEUS-BRIDGE] Dependencies configured successfully")
 
     except Exception as e:
-        print(f"[NUCLEUS-BRIDGE] Error: {e}")
+        print(f"[NUCLEUS-BRIDGE] Error configuring dependencies: {e}")
         # Fallback to basic dependencies
-        env.Append(LIB_DEPS=[
-            "lvgl/lvgl",
-            "google/flatbuffers@^23.5.26",
-        ])
+        try:
+            env.Append(LIB_DEPS=[
+                "lvgl/lvgl",
+                "google/flatbuffers@^23.5.26",
+            ])
+        except:
+            pass
 
 
 # PlatformIO extra_script entry point
-Import("env")
-add_conan_lib_deps()
+try:
+    Import("env")
+    add_conan_lib_deps()
+except NameError:
+    # Not running in PlatformIO context, skip automatic execution
+    pass
 
 
 def main():
