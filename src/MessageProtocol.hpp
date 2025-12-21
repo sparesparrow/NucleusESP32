@@ -22,11 +22,9 @@ enum class MessageType : uint8_t;
 } // namespace protocol
 } // namespace nucleus
 
-// Forward declarations for components
-namespace Nucleus {
-class CommandDispatcher;
-class ErrorHandler;
-}
+// Include component headers for complete types
+#include "CommandDispatcher.hpp"
+#include "ErrorHandler.hpp"
 
 namespace Nucleus {
 
