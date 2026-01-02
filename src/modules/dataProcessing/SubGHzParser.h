@@ -31,6 +31,13 @@ struct SubGHzData {
     std::vector<std::vector<RawDataElement>> raw_data_list;
     std::vector<RawDataElement> raw_data;
     std::vector<RawDataElement> key_data;
+    // Metadata pro dekódované/rolling klíče
+    uint64_t key;      
+    uint32_t serial;
+    uint16_t counter;
+    uint8_t button;
+
+
 };
 
 class SubGHzParser {
@@ -46,6 +53,11 @@ public:
 
     ELECHOUSE_CC1101 ELECCC1101;
     SDcard& SD_SUB = SDcard::getInstance();  
+    void emulateAndIncrement(const char* filename); 
+    void saveDecodedKey(const char* filename, SubGHzData& d);
+
+    void sendRollingCode(SubGHzData& d);
+    
     
     
 private:

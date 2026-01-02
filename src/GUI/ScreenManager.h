@@ -35,6 +35,9 @@ public:
     lv_obj_t * spinbox_bitLenght;
     lv_obj_t * spinbox_frequency;
     lv_obj_t * spinbox_repeats; 
+    // Obrazovky pro SubGHz
+    void createSubGhzBrowser();                    // Seznam souborů na SD
+    void createEmulateScreen(String filePath);     // Ovládací panel klíče
 
     static ScreenManager& getInstance();
 

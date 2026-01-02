@@ -109,6 +109,11 @@ static void lv_spinbox_decrement_event_cb(lv_event_t * e);
 
 static bool recievedSubGhz;
 
+static void load_subghz_file_cb(lv_event_t * e);
+    
+    // Callback pro tlačítko "Vysílat" (Transmit)
+    static void transmit_key_cb(lv_event_t * e);
+
 
 
 private:

@@ -15,6 +15,13 @@
 #include "protocols/Holtek_HT12xProtocol.h"
 #include "protocols/kia.hpp"
 #include "protocols/KeeLoqProtocol.hpp"
+#include "protocols/BMWProtocol.h"
+#include "protocols/CitroenProtocol.h"
+#include "protocols/FiatV0Protocol.h"
+#include "protocols/FordV0Protocol.h"
+#include "protocols/HondaProtocol.h"
+#include "protocols/HyundaiProtocol.h"
+#include "protocols/VWProtocol.h"
 //#include "protocols/TPMSGenericData.h"
 
 #define SAMPLE_SIZE 2048
@@ -206,7 +213,7 @@ public:
     void reverseLogicState();
     void filterAll(); 
     void sendEncoded(RFProtocol protocol, float frequency, int16_t bitLenght, int8_t repeats, int64_t code);
-
+    void updateUI(String text);
     void SaveToSD();
 private:
     //decoder instances
@@ -218,6 +225,13 @@ private:
     SMC5326Protocol  smc5326Protocol;
     KiaProtocol kiaProtocol;
     KeeLoqProtocolDecoder keeloqDecoder;
+    BMWProtocol bmwProtocol;
+    VWProtocol vwProtocol;
+    CitroenProtocol citroenProtocol;
+    FiatV0Protocol fiatV0Protocol;
+    FordV0Protocol fordV0Protocol;
+    HyundaiProtocol hyundaiProtocol;
+    HondaProtocol hondaProtocol;
     //TPMSProtocolDecoder tpmsDecoder;
 
     

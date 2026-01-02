@@ -554,6 +554,7 @@ void EVENTS::btn_event_RAW_REC_run(lv_event_t* e)
     lv_dropdown_get_selected_str(screenMgr.dropdown_2, selected_text_type, sizeof(selected_text_type)); 
 
     lv_textarea_set_text(text_area, "Waiting for signal.\n");
+   // CC1101EV.setCC1101Preset(AM650);
     if(strcmp(selected_text_type, "Decoder") == 0) {
         CC1101EV.setFrequency(CC1101_MHZ);
         CC1101EV.enableReceiver();
@@ -950,3 +951,38 @@ void EVENTS::CC1101TransmitTask(void* pvParameters) {
     vTaskDelete(NULL);
 }
 
+// GUI/events.cpp
+
+void EVENTS::load_subghz_file_cb(lv_event_t * e) {
+    const char * filename = (const char *)lv_event_get_user_data(e);
+    // Uložíme si cestu k aktuálnímu souboru pro emulaci
+    String fullPath = "/subghz/" + String(filename);
+    
+    // Přepneme na obrazovku emulátoru
+    ScreenManager::getInstance().createEmulateScreen(fullPath);
+}
+
+
+void EVENTS::transmit_key_cb(lv_event_t * e) {
+    // Oprava přetypování pro LVGL
+    lv_obj_t * btn = (lv_obj_t *)lv_event_get_target(e);
+    char* path = (char*)lv_event_get_user_data(e);
+    
+    // Získání počtu opakování ze spinboxu (pokud existuje)
+    // Pokud ScreenManager nemá spinbox_repeats, definuj default:
+    int repeats = 1; 
+    // Pokud ho máš v ScreenManageru: 
+    // int repeats = lv_spinbox_get_value(ScreenManager::getInstance().spinbox_repeats);
+
+    SubGHzParser parser;
+    
+    // Indikace vysílání změnou barvy
+    lv_obj_set_style_bg_color(btn, lv_palette_main(LV_PALETTE_YELLOW), 0);
+    
+    for(int i = 0; i < repeats; i++) {
+        parser.emulateAndIncrement(path);
+        delay(50); // Mezera mezi pakety
+    }
+
+    lv_obj_set_style_bg_color(btn, lv_palette_main(LV_PALETTE_GREEN), 0);
+}

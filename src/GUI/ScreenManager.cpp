@@ -896,3 +896,54 @@ void ScreenManager::init_neon_theme(void) {
     lv_obj_t * screen = lv_scr_act();
     apply_neon_theme(screen);
 }
+
+
+// GUI/ScreenManager.cpp
+
+void ScreenManager::createSubGhzBrowser() {
+  //  cleanScreen(); // Pomocná funkce pro smazání starých objektů
+    
+    lv_obj_t * list = lv_list_create(appScreen_);
+    lv_obj_set_size(list, 220, 180);
+    lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_bg_color(list, lv_color_hex(0x1A1A1A), 0); // Sparrow Dark Theme
+
+    // Tady bys normálně iteroval přes SD_SUB.listDir("/subghz/")
+    // Pro ukázku přidáme statické položky:
+    const char* files[] = {"Gate_BMW.sub", "Garage_Nice.sub", "Office_VAG.sub"};
+    
+    for(const char* f : files) {
+        lv_obj_t * btn = lv_list_add_btn(list, LV_SYMBOL_FILE, f);
+        lv_obj_add_event_cb(btn, EVENTS::load_subghz_file_cb, LV_EVENT_CLICKED, (void*)f);
+    }
+}
+
+void ScreenManager::createEmulateScreen(String filePath) {
+    //cleanScreen();
+
+    // Titulek se jménem souboru
+    lv_obj_t * title = lv_label_create(appScreen_);
+    lv_label_set_text(title, filePath.c_str());
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+
+    // Hlavní tlačítko "TRANSMIT"
+    lv_obj_t * transBtn = lv_btn_create(appScreen_);
+    lv_obj_set_size(transBtn, 120, 120);
+    lv_obj_align(transBtn, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_radius(transBtn, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(transBtn, lv_palette_main(LV_PALETTE_RED), 0);
+    
+    lv_obj_t * label = lv_label_create(transBtn);
+    lv_label_set_text(label, LV_SYMBOL_PLAY);
+    lv_obj_center(label);
+
+    // Přidáme cestu k souboru jako uživatelská data pro event
+    static char pathBuf[64];
+    strncpy(pathBuf, filePath.c_str(), sizeof(pathBuf));
+    lv_obj_add_event_cb(transBtn, EVENTS::transmit_key_cb, LV_EVENT_CLICKED, (void*)pathBuf);
+
+    // Zobrazení informací o protokolu (volitelné)
+    lv_obj_t * info = lv_label_create(appScreen_);
+    lv_label_set_text(info, "Protocol: Rolling Code\nStatus: Ready");
+    lv_obj_align(info, LV_ALIGN_BOTTOM_MID, 0, -20);
+}

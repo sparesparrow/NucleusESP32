@@ -196,3 +196,76 @@ std::vector<CustomPresetElement> SubGHzParser::parseCustomPresetData(const Strin
     }
     return result;
 }
+
+void SubGHzParser::sendRollingCode(SubGHzData& d) {
+    if (d.protocol == "VAG") {
+        // 1. Sestavení 64-bitového KeeLoq packetu
+        // uint64_t encrypted = keeloq_encrypt(d.serial, d.counter, d.key);
+        
+        // 2. Převod na pulzy (PWM/Manchester)
+        // std::vector<int16_t> pulses = convertToVagPulses(encrypted);
+        
+        // 3. Odeslání přes CC1101
+        // CC1101.sendSamples(pulses.data(), pulses.size(), 0);
+    }
+}
+
+void SubGHzParser::emulateAndIncrement(const char* filename) {
+    // 1. Načtení dat ze souboru
+    SubGHzData currentData = parseContent(filename);
+    
+    if (currentData.protocol == "") {
+        Serial.println("Error: Could not parse file or protocol unknown.");
+        return;
+    }
+
+    // 2. Rozhodnutí o vysílání (RAW vs Protocol)
+    if (!currentData.raw_data_list.empty()) {
+        // Pokud jsou tam RAW data, pošli první blok (nebo iteruj)
+        for(const auto& block : currentData.raw_data_list) {
+            sendRawData(block);
+        }
+    } else {
+        // Tady bude tvoje logika pro šifrované protokoly
+        // Zatím použijeme placeholder, dokud nedopíšeme RollingEncoders
+        Serial.printf("Emulating Protocol: %s, Key: %llX\n", currentData.protocol.c_str(), currentData.key);
+        
+        // Pokud je to rolling kód, inkrementuj a ulož
+        if (currentData.protocol == "VAG" || currentData.protocol == "BMW") {
+            currentData.counter++;
+            saveDecodedKey(filename, currentData);
+            Serial.printf("New Counter saved: %d\n", currentData.counter);
+        }
+    }
+}
+
+void SubGHzParser::saveDecodedKey(const char* filename, SubGHzData& d) {
+    // Oprava: createOrOpenFile vrací File32*, proto použijeme ukazatel
+    File32* file = SD_SUB.createOrOpenFile(filename, O_RDWR | O_CREAT | O_TRUNC);
+    
+    if (file == nullptr) {
+        Serial.println("SD Error: Cannot save key (File pointer is null)!");
+        return;
+    }
+
+    // Při zápisu přes ukazatel používáme operátor ->
+    file->println("Filetype: Sparrow AI Key");
+    file->printf("Frequency: %u\n", d.frequency);
+    file->printf("Preset: %s\n", d.preset.c_str());
+    file->printf("Protocol: %s\n", d.protocol.c_str());
+    
+    if (d.key != 0) {
+        // Formátování pro 64-bit HEX
+        char hexBuffer[17];
+        sprintf(hexBuffer, "%llX", d.key);
+        file->printf("Key: %s\n", hexBuffer);
+    }
+    
+    if (d.serial != 0) file->printf("Serial: %X\n", d.serial);
+    if (d.counter != 0) file->printf("Counter: %d\n", d.counter);
+    
+    // Nezapomeň soubor zavřít a vyčistit SD
+    file->close();
+    SD_SUB.endSD();
+    SD_SUB.initializeSD(); 
+}
