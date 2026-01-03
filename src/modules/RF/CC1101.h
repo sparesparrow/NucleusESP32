@@ -2,11 +2,12 @@
 #define C1101_H
 
 #include "../../globals.h"
-#include "RCSwitch.h"
+
 
 #include "SPI.h"
 #include <driver/timer.h>
 //decoders/encoders
+#include "Interfaces.h"
 #include "protocols/HormannProtocol.h" 
 #include "protocols/CameProtocol.h" 
 #include "protocols/NiceFloProtocol.h"
@@ -22,14 +23,16 @@
 #include "protocols/HondaProtocol.h"
 #include "protocols/HyundaiProtocol.h"
 #include "protocols/VWProtocol.h"
+#include <vector>
 //#include "protocols/TPMSGenericData.h"
 
-#define SAMPLE_SIZE 2048
-#define MAX_SIGNAL_LENGTH 10000000  
+#define SAMPLE_SIZE 1024
+#define MAX_SIGNAL_LENGTH 10000  
 #define TE_MIN_COUNT   5        // Minimum number of high pulses required to calculate TE
 #define GAP_MULTIPLIER 10       // A low pulse longer than GAP_MULTIPLIER * TE is considered a gap
 const float BIN_RAW_GAP_MULTIPLIER = 10.0;  // A low pulse longer than (TE * GAP_MULTIPLIER) is considered a gap
 const uint16_t BIN_RAW_TE_MIN_COUNT = 5;  // Minimum number of high pulses to compute TE
+
 
 //---------------------------------------------------------------------------//
 //-----------------------------Presets-Variables-----------------------------//
@@ -45,8 +48,23 @@ extern uint8_t samplecount;
 extern bool startLow;
 extern uint32_t actualFreq;
 
+class IReceivedData
+{
 
-#include <vector>
+};
+
+
+
+class NucleusESP32 : public INucleusESP32
+{
+public: 
+    NucleusESP32(IReceivedData& receivedData);
+    bool decode() override;
+    void send() override;
+private:
+    IReceivedData& receivedData;
+};
+
 
 struct Signal {
     std::vector<int64_t> samples;
@@ -149,7 +167,6 @@ struct CC1101TH {
 
 
 
-
 class CC1101_CLASS {
 public:
     static SignalCollection allData;
@@ -168,11 +185,8 @@ public:
     struct ReceivedData {
         std::vector<int64_t> samples;
         std::vector<Signal> signals;
-        std::vector<int64_t> filtered;
-        std::vector<int64_t> filtered4;
         volatile unsigned long lastReceiveTime = 0;
         volatile unsigned long sampleCount = 0;
-        volatile unsigned long normalizedCount = 0;
         bool startstate;
 
         size_t size(){
@@ -183,7 +197,7 @@ public:
     static ReceivedData receivedData;
 
     bool init();
-    RCSwitch getRCSwitch();
+    //RCSwitch getRCSwitch();
     void setCC1101Preset(CC1101_PRESET preset);
     void loadPreset();
     void disableReceiver();
@@ -234,10 +248,6 @@ private:
     HondaProtocol hondaProtocol;
     //TPMSProtocolDecoder tpmsDecoder;
 
-    
-
-
-
     String generateFilename(float frequency, int modulation, float bandwidth);
     String generateRandomString(int length);
    
@@ -247,7 +257,5 @@ private:
     std::vector<uint64_t> pulses;
    
 };
-
-
 
 #endif

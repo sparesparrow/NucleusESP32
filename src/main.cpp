@@ -31,7 +31,7 @@ decode_results results;
 IRsend Irsend(IR_TX);
 IRrecv Irrecv(IR_RX);
 IR_CLASS ir;
-RCSwitch mySwitch1;
+//RCSwitch mySwitch1;
 
 BRUTE::CC1101_BRUTE RFbruteForcer;
 CC1101_CLASS CC1101;
@@ -254,15 +254,15 @@ void bruteForceTask(void *pvParameters) {
     if(C1101CurrentState == STATE_RCSWITCH) {
                // delay(50);
                 Serial.println(gpio_get_level(CC1101_CCGDO0A));
-        if (mySwitch1.available()) {
-             delay(5);
-            ir.output(mySwitch1.getReceivedValue(), mySwitch1.getReceivedBitlength(), mySwitch1.getReceivedDelay(), mySwitch1.getReceivedRawdata(),mySwitch1.getReceivedProtocol(), screenMgrM.getTextArea());
-            mySwitch1.resetAvailable();
+        // if (mySwitch1.available()) {
+        //      delay(5);
+        //     ir.output(mySwitch1.getReceivedValue(), mySwitch1.getReceivedBitlength(), mySwitch1.getReceivedDelay(), mySwitch1.getReceivedRawdata(),mySwitch1.getReceivedProtocol(), screenMgrM.getTextArea());
+        //     mySwitch1.resetAvailable();
  
 
-            C1101CurrentState = STATE_IDLE;
-            runningModule = MODULE_NONE;
-        }
+        //     C1101CurrentState = STATE_IDLE;
+        //     runningModule = MODULE_NONE;
+        // }
     }
     if(C1101CurrentState == STATE_PLAYBACK) {
         CC1101.initRaw();

@@ -332,7 +332,7 @@ void EVENTS::sendCapturedEvent(lv_event_t * e) {
         CC1101EV.sendRaw();   
     } else if(strcmp(selected_text_type, "RC-Switch") == 0) {
         CC1101EV.initRaw();
-        RCSwitch mySwitch3;
+       // RCSwitch mySwitch3;
         // ////Serial.println("RCSwitch");
         // CC1101EV.setFrequency(CC1101_MHZ);
         // mySwitch3.setProtocol(mySwitch3.getReceivedProtocol());
