@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
-#include <Adafruit_PN532.h>
+//#include <Adafruit_PN532.h>
 #include "globals.h"
 
 class ISO14443ASTarget {

@@ -6,12 +6,18 @@
  #define DURATION_DIFF(x, y) (((x) < (y)) ? ((y) - (x)) : ((x) - (y)))
 
  
- #define DIP_PATTERN "%c%c%c%c%c%c%c%c%c%c"
- #define CNT_TO_DIP(dip) \
-     (dip & 0x0800 ? '1' : '0'), (dip & 0x0400 ? '1' : '0'), (dip & 0x0200 ? '1' : '0'), \
-     (dip & 0x0100 ? '1' : '0'), (dip & 0x0080 ? '1' : '0'), (dip & 0x0040 ? '1' : '0'), \
-     (dip & 0x0020 ? '1' : '0'), (dip & 0x0010 ? '1' : '0'), (dip & 0x0001 ? '1' : '0'), \
-     (dip & 0x0008 ? '1' : '0')
+// Avoid redefining DIP macros if already defined in headers
+#ifndef DIP_PATTERN
+#define DIP_PATTERN "%c%c%c%c%c%c%c%c%c%c"
+#endif
+
+#ifndef CNT_TO_DIP
+#define CNT_TO_DIP(dip) \
+    (dip & 0x0800 ? '1' : '0'), (dip & 0x0400 ? '1' : '0'), (dip & 0x0200 ? '1' : '0'), \
+    (dip & 0x0100 ? '1' : '0'), (dip & 0x0080 ? '1' : '0'), (dip & 0x0040 ? '1' : '0'), \
+    (dip & 0x0020 ? '1' : '0'), (dip & 0x0010 ? '1' : '0'), (dip & 0x0001 ? '1' : '0'), \
+    (dip & 0x0008 ? '1' : '0')
+#endif
  
 
  AnsonicProtocol::AnsonicProtocol()

@@ -9,12 +9,17 @@
 
 
 
-// Optional DIP macros for printing DIP states
+// Optional DIP macros for printing DIP states (guarded to avoid duplicates)
+#ifndef DIP_PATTERN
 #define DIP_PATTERN "%c%c%c%c%c%c%c%c"
+#endif
+
+#ifndef CNT_TO_DIP
 #define CNT_TO_DIP(dip)                                                                     \
     (dip & 0x0080 ? '0' : '1'), (dip & 0x0040 ? '0' : '1'), (dip & 0x0020 ? '0' : '1'),     \
     (dip & 0x0010 ? '0' : '1'), (dip & 0x0008 ? '0' : '1'), (dip & 0x0004 ? '0' : '1'),     \
     (dip & 0x0002 ? '0' : '1'), (dip & 0x0001 ? '0' : '1')
+#endif
 
 class HoltekProtocol {
 public:

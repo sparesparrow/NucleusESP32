@@ -14,7 +14,10 @@
 
 #define SD_CONFIG SdSpiConfig(SDCARD_CS_PIN, SHARED_SPI, SPI_HALF_SPEED)
 
-SdFat32 SD;  
+// Use a private SdFat32 instance to avoid symbol collision with other SD libraries
+// (some frameworks/libraries define a global `SD` object which causes multiple
+// definition linker errors). Rename to `sdFat` and use it internally here.
+SdFat32 sdFat;  
 
 //bool FlipperFileFlag;
 //float tempFreq;
@@ -41,12 +44,12 @@ SDcard& SDcard::getInstance() {
 bool SDcard::initializeSD() {
     digitalWrite(SDCARD_CS_PIN, LOW);
     delay(5);
-    if (!SD.begin(SD_CONFIG)) {
+    if (!sdFat.begin(SD_CONFIG)) {
         Serial.println(F("SD Card MOUNT FAIL"));
         return false;
     }
     Serial.println(F("SD Card MOUNT SUCCESS"));
-    uint64_t cardSize = (uint64_t)SD.card()->sectorCount() * 512 / (1024 * 1024);
+    uint64_t cardSize = (uint64_t)sdFat.card()->sectorCount() * 512 / (1024 * 1024);
     Serial.print(F("Reported SD Card Size: "));
     Serial.print(cardSize);
     Serial.println(F(" MB"));
@@ -54,7 +57,7 @@ bool SDcard::initializeSD() {
 }
 
 bool SDcard::directoryExists(const char* dirPath) {
-    if (SD.exists(dirPath)) {
+    if (sdFat.exists(dirPath)) {
         //Serial.print(F("Directory exists: "));
         //Serial.println(dirPath);
         return true;
@@ -66,7 +69,7 @@ bool SDcard::directoryExists(const char* dirPath) {
 }
 
 bool SDcard::createDirectory(const char* dirPath) {
-    if (SD.mkdir(dirPath)) {
+    if (sdFat.mkdir(dirPath)) {
         //Serial.print(F("Directory created successfully: "));
         //Serial.println(dirPath);
         return true;
@@ -78,7 +81,7 @@ bool SDcard::createDirectory(const char* dirPath) {
 }
 
 File32* SDcard::getByPath(const char * path) {
-    File32* file = new File32(SD.open(path));  
+    File32* file = new File32(sdFat.open(path));  
     if (!file->isOpen()) {  
         delete file;  
         return nullptr;
@@ -88,7 +91,7 @@ File32* SDcard::getByPath(const char * path) {
 
 File32* SDcard::createOrOpenFile(const char* filePath, oflag_t mode) {
     File32* file = new File32();
-    *file = SD.open(filePath, mode);
+    *file = sdFat.open(filePath, mode);
     if (!*file) {
         //Serial.print(F("Failed to open/create file: "));
         //Serial.println(filePath);
@@ -111,8 +114,8 @@ bool SDcard::closeFile(File32* file) {
 }
 
 bool SDcard::deleteFile(const char* filePath) {
-    if (SD.exists(filePath)) {
-        if (SD.remove(filePath)) {
+    if (sdFat.exists(filePath)) {
+        if (sdFat.remove(filePath)) {
             //Serial.println(F("File deleted successfully."));
             return true;
         } else {
@@ -125,7 +128,7 @@ bool SDcard::deleteFile(const char* filePath) {
 }
 
 bool SDcard::fileExists(const char* filePath) {
-    if (SD.exists(filePath)) {
+    if (sdFat.exists(filePath)) {
         //Serial.println(F("File exists."));
         return true;
     }
@@ -269,7 +272,7 @@ bool SDcard::writeFile(File32* file, const std::vector<uint8_t>& data, unsigned 
 
 bool SDcard::restartSD() {
     // Unmount SD card
-    SD.end();
+    sdFat.end();
     SPI.end();
     delay(20);
     SPI.begin();
@@ -286,6 +289,6 @@ bool SDcard::restartSD() {
 
 
 void SDcard::endSD() {
-    SD.end();
+    sdFat.end();
     SPI.end();
 }

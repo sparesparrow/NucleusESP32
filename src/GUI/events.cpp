@@ -540,40 +540,42 @@ void EVENTS::CustomSubGhzHelp_CB(lv_event_t * e) {
 
 void EVENTS::btn_event_RAW_REC_run(lv_event_t* e)
 {
-    lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_CLICKED) {
-    char selected_text[32];
-    char selected_text_type[32];
-    char frequency_buffer[10];
-    lv_obj_t * text_area = screenMgr.getTextArea();
-    lv_obj_t * ta = screenMgr.getFreqInput();
-    strncpy(frequency_buffer, lv_textarea_get_text(ta), sizeof(frequency_buffer) - 1);
-    frequency_buffer[sizeof(frequency_buffer) - 1] = '\0'; 
-    CC1101_MHZ = atof(frequency_buffer);
-    lv_dropdown_get_selected_str(screenMgr.dropdown_1, selected_text, sizeof(selected_text));  
-    lv_dropdown_get_selected_str(screenMgr.dropdown_2, selected_text_type, sizeof(selected_text_type)); 
-
-    lv_textarea_set_text(text_area, "Waiting for signal.\n");
-   // CC1101EV.setCC1101Preset(AM650);
-    if(strcmp(selected_text_type, "Decoder") == 0) {
-        CC1101EV.setFrequency(CC1101_MHZ);
-        CC1101EV.enableReceiver();
-        runningModule = MODULE_CC1101;
-        C1101CurrentState = STATE_CODEGRABBER;   
-    } else if(strcmp(selected_text_type, "RC-Switch") == 0) {
-        ////Serial.println("RCSwitch");
-        CC1101EV.setFrequency(CC1101_MHZ);
-        CC1101EV.enableRCSwitch(); 
-        runningModule = MODULE_CC1101;
-        C1101CurrentState = STATE_RCSWITCH;   
-    } else if(strcmp(selected_text_type, "Raw") == 0) {
-        CC1101EV.setFrequency(CC1101_MHZ);
-        CC1101EV.enableReceiver();
-        runningModule = MODULE_CC1101;
-        C1101CurrentState = STATE_RAWREC; 
-    }
     
-    }
+    lv_event_code_t code = lv_event_get_code(e);
+    CC1101EV.decode();
+//     if (code == LV_EVENT_CLICKED) {
+//     char selected_text[32];
+//     char selected_text_type[32];
+//     char frequency_buffer[10];
+//     lv_obj_t * text_area = screenMgr.getTextArea();
+//     lv_obj_t * ta = screenMgr.getFreqInput();
+//     strncpy(frequency_buffer, lv_textarea_get_text(ta), sizeof(frequency_buffer) - 1);
+//     frequency_buffer[sizeof(frequency_buffer) - 1] = '\0'; 
+//     CC1101_MHZ = atof(frequency_buffer);
+//     lv_dropdown_get_selected_str(screenMgr.dropdown_1, selected_text, sizeof(selected_text));  
+//     lv_dropdown_get_selected_str(screenMgr.dropdown_2, selected_text_type, sizeof(selected_text_type)); 
+
+//     lv_textarea_set_text(text_area, "Waiting for signal.\n");
+//    // CC1101EV.setCC1101Preset(AM650);
+//     if(strcmp(selected_text_type, "Decoder") == 0) {
+//         CC1101EV.setFrequency(CC1101_MHZ);
+//         CC1101EV.enableReceiver();
+//         runningModule = MODULE_CC1101;
+//         C1101CurrentState = STATE_CODEGRABBER;   
+//     } else if(strcmp(selected_text_type, "RC-Switch") == 0) {
+//         ////Serial.println("RCSwitch");
+//         CC1101EV.setFrequency(CC1101_MHZ);
+//         CC1101EV.enableRCSwitch(); 
+//         runningModule = MODULE_CC1101;
+//         C1101CurrentState = STATE_RCSWITCH;   
+//     } else if(strcmp(selected_text_type, "Raw") == 0) {
+//         CC1101EV.setFrequency(CC1101_MHZ);
+//         CC1101EV.enableReceiver();
+//         runningModule = MODULE_CC1101;
+//         C1101CurrentState = STATE_RAWREC; 
+//     }
+    
+//     }
 }
 
 void EVENTS::sendTesla(lv_event_t* e) {   

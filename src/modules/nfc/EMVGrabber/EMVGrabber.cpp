@@ -52,7 +52,7 @@ bool PN532_EMV_Reader::checkTrailer() {
 }
 
 std::vector<Application> PN532_EMV_Reader::getAllApplications() {
-    // std::vector<Application> list;
+     std::vector<Application> list;
     // APDU res = executeCommand(SELECT_PPSE, sizeof(SELECT_PPSE), "SELECT PPSE");
     
     // if (res.size == 0) return list;
@@ -90,7 +90,7 @@ std::vector<Application> PN532_EMV_Reader::getAllApplications() {
     //         --i;
     //     }
     // }
-    // return list;
+     return list;
 }
 
 // APDU PN532_EMV_Reader::selectByPriority(  std::vector<Application>& list, uint8_t priority) {
@@ -128,9 +128,9 @@ uint8_t responseLength = sizeof(response);
 uint8_t sendBuffer[256];
 memcpy(sendBuffer, command, size);
 
-nfc.writecommand(command, size);
-nfc.waitready(1000);
-nfc.readdata(response, responseLength);
+// nfc.writecommand(command, size);
+// nfc.waitready(1000);
+// nfc.readdata(response, responseLength);
 
 return response;
 }

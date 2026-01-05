@@ -1,0 +1,318 @@
+
+// ==========================================
+// [SECTION 1] The Flipper Input Data
+// ==========================================
+
+// Filetype: Flipper SubGhz RAW File
+// Version: 1
+// Frequency: 433920000
+// Preset: FuriHalSubGhzPresetOok650Async
+// Protocol: RAW
+
+// Signal frequency
+const uint32_t subghz_frequency = 433920000;
+
+// Signal preset
+const char* subghz_preset = "FuriHalSubGhzPresetOok650Async";
+
+// Raw timing data (in microseconds)
+const int32_t subghz_raw_data[] = {
+    16933, -98, 525, -134, 295, -66, 297, -64, 327, -132, 423, -66, 589, -100, 263, -100,
+    299, -102, 495, -100, 299, -100, 19405, -100, 267, -100, 367, -100, 22283, -68, 827, -100,
+    365, -98, 263, -100, 1131, -164, 65, -98, 131, -200, 263, -164, 397, -134, 229, -100,
+    165, -100, 263, -296, 195, -166, 261, -130, 491, -98, 885, -98, 263, -132, 261, -98,
+    391, -66, 359, -100, 489, -100, 11445, -170, 299, -232, 97, -762, 265, -1258, 6351, -68,
+};
+
+// Calculate the number of elements in the raw data array
+const size_t subghz_raw_data_size = sizeof(subghz_raw_data) / sizeof(subghz_raw_data[0]);
+
+
+// ==========================================
+// vyse vole je soubor, dole more test, a na prase, komenty
+// ==========================================
+
+    
+
+
+bool CC1101_CLASS::decode() {
+
+
+        //    samples.clear();
+       // signals.clear();
+      //  sampleCount = 0;
+
+              //  samples.reserve(subghz_raw_data_size);
+
+        // 3. Fill samples with absolute duration values
+        for (size_t i = 0; i < subghz_raw_data_size; i++) {
+            // We use std::abs because 'samples' usually expects duration length, 
+            // not polarity (polarity is inferred from startstate + alternating)
+             CC1101.receivedData.samples.push_back(std::abs(subghz_raw_data[i]));
+        }
+
+     //   sampleCount = samples.size();
+        
+        // 5. Update Timestamp (Using 0 or current system time/millis)
+        // If on Arduino/ESP use: lastReceiveTime = millis();
+     //   lastReceiveTime = 0; 
+
+        //////////////////////////////////////////////////
+        ////////////KONEC TESTU//////////////////////
+
+        filterSignal(); // This function call will run the filtering logic.
+    Serial.println("/////////////////////////////////////////////////////////");
+    for (int i = 0; i < CC1101.receivedData.size(); i++) {
+        auto sample = CC1101.receivedData.samples[i];
+        Serial.println(sample);
+    }
+
+    // 1. BMW Protocol (Timing: ~350us / 700us)
+    if ((DURATION_DIFF(pulses[0], 350) < 60) && (DURATION_DIFF(pulses[1], 700) < 100)) {
+        if (bmwProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = bmwProtocol.getCodeString();
+            updateUI(result); // Pomocná funkce pro zobrazení na displeji
+            return true;
+        }
+    }
+
+    // 2. VW / VAG Group (Manchester / PWM hybrid)
+    // VW má často pulse[0] kolem 340-400us
+    if ((DURATION_DIFF(pulses[0], 380) < 80)) {
+        if (vwProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = vwProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 3. Citroen / PSA (Timing: ~370us / 770us)
+    if ((DURATION_DIFF(pulses[0], 370) < 70) && (DURATION_DIFF(pulses[1], 770) < 110)) {
+        if (citroenProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = citroenProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 4. Fiat V0 (Manchester, velmi krátké te ~200us)
+    if ((DURATION_DIFF(pulses[0], 200) < 50)) {
+        if (fiatV0Protocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = fiatV0Protocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 5. Ford V0 (Manchester, timing ~250us)
+    if ((DURATION_DIFF(pulses[0], 250) < 50)) {
+        if (fordV0Protocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = fordV0Protocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 6. Honda Protocol
+    if ((DURATION_DIFF(pulses[0], 430) < 50)) {
+        if (hondaProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = hondaProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 7. Hyundai Protocol
+    if ((DURATION_DIFF(pulses[0], 250) < 50)) {
+        if (hyundaiProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = hyundaiProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 8. Hormann Protocol
+    if ((DURATION_DIFF(pulses[0], 500) < 40) && (DURATION_DIFF(pulses[1], 1000) < 90)) {
+        if (hormannProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            hormannProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 9. Came Protocol
+    if ((DURATION_DIFF(pulses[0], 320) < 50) && (DURATION_DIFF(pulses[1], 640) < 90)) {
+        if (cameProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            cameProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 10. Ansonic Protocol
+    if ((DURATION_DIFF(pulses[0], 555) < 40) && (DURATION_DIFF(pulses[1], 1111) < 90)) {
+        if (ansonicProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            ansonicProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 11. NiceFlo Protocol
+    if ((DURATION_DIFF(pulses[0], 700) < 50) && (DURATION_DIFF(pulses[1], 1400) < 90)) {
+        if (niceFloProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            niceFloProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 12. SMC5326 Protocol
+    if ((DURATION_DIFF(pulses[0], 300) < 50) && (DURATION_DIFF(pulses[1], 900) < 90)) {
+        if (smc5326Protocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            smc5326Protocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 13. Kia Protocol
+    if ((DURATION_DIFF(pulses[0], 250) < 50) && (DURATION_DIFF(pulses[1], 500) < 90)) {
+        // Corrected data source and size arguments for filtered data.
+        if (kiaProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            kiaProtocol.get_string(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 14. KeeLoq Protocol (This part seems to have duplicate code in your file, let's keep one pass)
+    else if ((DURATION_DIFF(pulses[0], 400) < 100) && (DURATION_DIFF(pulses[1], 800) < 150)) {
+        Serial.println("KeeLoq structure detected (Timing match):");
+        for (int i = 0; i < CC1101.receivedData.samples.size(); i++) {
+            //   keeloqDecoder.feed(CC1101.receivedData.samples.samples[i] < 0, abs(CC1101.receivedData.samples.samples[i]));
+        }
+        if (keeloqDecoder.hasResult()) {
+            // KeeLoq code processing here...
+        }
+    }
+
+    // The second set of protocol checks (lines 869-953) in your log are duplicates of the above logic.
+    // If you intended to have two passes, ensure the logic is distinct. Otherwise, remove one set.
+    // Assuming the first set (above) is the core logic and fixing the second pass as per the log errors:
+
+    // --- SECOND PASS OF PROTOCOL CHECKS --- (Based on log lines 869-953)
+    // 1. BMW Protocol (Timing: ~350us / 700us)
+    if ((DURATION_DIFF(pulses[0], 350) < 60) && (DURATION_DIFF(pulses[1], 700) < 100)) {
+        // Fix: Removed extra parenthesis from if condition and used .data()
+        if (bmwProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = bmwProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 2. VW / VAG Group (Manchester / PWM hybrid)
+    if ((DURATION_DIFF(pulses[0], 380) < 80)) {
+        // Fix: Removed extra parenthesis from if condition and used .data()
+        if (vwProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = vwProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 3. Citroen / PSA (Timing: ~370us / 770us)
+    if ((DURATION_DIFF(pulses[0], 370) < 70) && (DURATION_DIFF(pulses[1], 770) < 110)) {
+        // Fix: Added missing comma between data pointer and size, and used .data()
+        if (citroenProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = citroenProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 4. Fiat V0 (Manchester, velmi krátké te ~200us)
+    if ((DURATION_DIFF(pulses[0], 200) < 50)) {
+        // Fix: Added missing comma between data pointer and size, and used .data()
+        if (fiatV0Protocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = fiatV0Protocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 5. Ford V0 Protocol
+    if ((DURATION_DIFF(pulses[0], 250) < 50)) {
+        if (fordV0Protocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = fordV0Protocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 6. Honda Protocol
+    if ((DURATION_DIFF(pulses[0], 430) < 50)) {
+        // Fix: Added missing parenthesis from if condition and used .data()
+        if (hondaProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = hondaProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 7. Hyundai Protocol
+    if ((DURATION_DIFF(pulses[0], 250) < 50)) {
+        if (hyundaiProtocol.decode(CC1101.receivedData.samples.data(), CC1101.receivedData.size())) {
+            String result = hyundaiProtocol.getCodeString();
+            updateUI(result);
+            return true;
+        }
+    }
+
+    // 8. Hormann Protocol
+    if ((DURATION_DIFF(pulses[0], 500) < 40) && (DURATION_DIFF(pulses[1], 1000) < 90)) {
+        if (hormannProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            hormannProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 9. Came Protocol
+    if ((DURATION_DIFF(pulses[0], 320) < 50) && (DURATION_DIFF(pulses[1], 640) < 90)) {
+        if (cameProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            cameProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 10. Ansonic Protocol
+    if ((DURATION_DIFF(pulses[0], 555) < 40) && (DURATION_DIFF(pulses[1], 1111) < 90)) {
+        if (ansonicProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            ansonicProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 11. NiceFlo Protocol
+    if ((DURATION_DIFF(pulses[0], 700) < 50) && (DURATION_DIFF(pulses[1], 1400) < 90)) {
+        if (niceFloProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            niceFloProtocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 12. SMC5326 Protocol
+    if ((DURATION_DIFF(pulses[0], 300) < 50) && (DURATION_DIFF(pulses[1], 900) < 90)) {
+        if (smc5326Protocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            smc5326Protocol.getCodeString(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    // 13. Kia Protocol (Second instance)
+    if ((DURATION_DIFF(pulses[0], 250) < 50) && (DURATION_DIFF(pulses[1], 500) < 90)) {
+        if (kiaProtocol.decode(CC1101.receivedData.samples.data(), CC1101_CLASS::receivedData.size())) {
+            kiaProtocol.get_string(pulses[0], pulses[1]);
+            return true;
+        }
+    }
+
+    CC1101_CLASS::receivedData.samples.clear();
+    CC1101_CLASS::receivedData.sampleCount = 0;
+    return false;
+}

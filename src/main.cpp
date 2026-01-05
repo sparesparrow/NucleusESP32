@@ -24,7 +24,7 @@
 #include "backlight/backlight.hpp"
 
 backLight_ bcklght;
-NFC::NFC_CLASS nfc;
+//NFC::NFC_CLASS nfc;
 
 
 decode_results results;
@@ -353,8 +353,8 @@ void bruteForceTask(void *pvParameters) {
         IRLoop();
     break;
     case MODULE_NFC:
-    nfc.init();
-    nfc.mifareDumpDefaultKeys();
+    //nfc.init();
+    // nfc.mifareDumpDefaultKeys();
     break;
    default:
     break;

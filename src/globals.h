@@ -63,7 +63,7 @@ const SPISettings spiSettings = SPISettings(SPI_CLOCK_DIV4, MSBFIRST, SPI_MODE0)
 #include <string.h>
 #include "SPI.h"
 #include "Arduino.h"
-#include "Adafruit_PN532.h"
+//#include "Adafruit_PN532.h"
 #include "modules/nfc/nfc.h"
 
 namespace NFC {

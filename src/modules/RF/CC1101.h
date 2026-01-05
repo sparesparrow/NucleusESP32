@@ -43,7 +43,8 @@ extern bool CC1101_recieve_is_running;
 extern bool CC1101_transmit_is_running;
 extern bool CC1101_is_idle;
 extern bool CC1101_interupt_attached;
-extern uint16_t sample[];
+// sample buffer declared here, defined in CC1101.cpp
+extern uint16_t samplesBuffer[SAMPLE_SIZE];
 extern uint8_t samplecount;
 extern bool startLow;
 extern uint32_t actualFreq;
@@ -55,15 +56,15 @@ class IReceivedData
 
 
 
-class NucleusESP32 : public INucleusESP32
-{
-public: 
-    NucleusESP32(IReceivedData& receivedData);
-    bool decode() override;
-    void send() override;
-private:
-    IReceivedData& receivedData;
-};
+// class NucleusESP32 : public INucleusESP32
+// {
+// public: 
+//     NucleusESP32(IReceivedData& receivedData);
+//     bool decode() override;
+//     void send() override;
+// private:
+//     IReceivedData& receivedData;
+// };
 
 
 struct Signal {

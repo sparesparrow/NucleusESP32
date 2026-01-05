@@ -11,13 +11,13 @@ namespace {
 
 // --- MfClassicPoller Method Implementations ---
 
-MfClassicPoller::MfClassicPoller(Adafruit_PN532* reader)
-    : nfc(reader),
-      cardType(MfClassicTypeNum),
-      uidLength(0) {
-    // Ensure UID buffer is zeroed initially (though array initialization does this)
-    memset(uid, 0, sizeof(uid));
-}
+// MfClassicPoller::MfClassicPoller(Adafruit_PN532* reader)
+//     : nfc(reader),
+//       cardType(MfClassicTypeNum),
+//       uidLength(0) {
+//     // Ensure UID buffer is zeroed initially (though array initialization does this)
+//     memset(uid, 0, sizeof(uid));
+// }
 
 MfClassicType MfClassicPoller::detectType() {
     if (!nfc) {

@@ -9,12 +9,18 @@
 #include "math.h"
 #include "GUI/ScreenManager.h"
 
+// Optional DIP macros for printing DIP states. Guarded to avoid duplicate-definition errors
+#ifndef DIP_PATTERN
 #define DIP_PATTERN "%c%c%c%c%c%c%c%c%c%c"
+#endif
+
+#ifndef CNT_TO_DIP
 #define CNT_TO_DIP(dip) \
     (dip & 0x0800 ? '1' : '0'), (dip & 0x0400 ? '1' : '0'), (dip & 0x0200 ? '1' : '0'), \
     (dip & 0x0100 ? '1' : '0'), (dip & 0x0080 ? '1' : '0'), (dip & 0x0040 ? '1' : '0'), \
     (dip & 0x0020 ? '1' : '0'), (dip & 0x0010 ? '1' : '0'), (dip & 0x0001 ? '1' : '0'), \
     (dip & 0x0008 ? '1' : '0')
+#endif
 
 
 class AnsonicProtocol {

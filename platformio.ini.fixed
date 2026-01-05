@@ -1,4 +1,3 @@
-
 ; PlatformIO Project Configuration File
 ;
 ;   Build options: build flags, source filter
@@ -39,33 +38,29 @@ build_flags =
 	-DMBEDTLS_DES3_C
 	-DMBEDTLS_DES3
 	-include limits.h
+	-std=gnu++2a
+
+board_build.partitions = custom_partition.csv
+lib_deps = 
+	adafruit/SdFat - Adafruit Fork @ ^2.2.3
+	https://github.com/ddxfish/XPT2046_Bitbang_Arduino_Library
+	https://github.com/lvgl/lvgl
+	;optional: AES library, IRremote compatibility, etc.
+	adafruit/Adafruit BusIO @ ^1.17.4
+	adafruit/Adafruit PN532 @ ^1.3.3
+
+[env:esp32-2432S028Rv2]
+board = esp32-2432S028Rv2
+build_flags = 
+	-Ofast
 	-Wall
-	
-	;z`'-D BOARD_NAME="${this.board}"'
 	'-DCORE_DEBUG_LEVEL=5'
 	'-D CYDV2'
-	;'-D RF_CC1101'
-
 
 [env:esp32-2432S028Rv3]
 board = esp32-2432S028Rv3
-# Remove aggressive -Ofast/-O2 from global and enable size-optimizing flags
-build_unflags =
+build_flags = 
 	-Ofast
-	-O2
-
-
-# Disable OTA-related libraries and set a custom partition table with a larger app slot
-lib_ignore = ArduinoOTA
-board_build.partitions = partitions_3mb.csv
-
-# Project-wide defines for this env
-build_flags =
-    -Os
-    -Wl,--gc-sections
-    -Wl,-relax
-    -Wall
-    '-D BOARD_NAME="${this.board}"'
-    '-D CYDV3'
-    '-D DISABLE_ARDUINO_OTA'
-
+	-Wall
+	'-D BOARD_NAME="${this.board}"'
+	'-D CYDV3'
